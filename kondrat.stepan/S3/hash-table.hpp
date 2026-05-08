@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <memory>
 #include "hash-node.hpp"
+#include "htiter.hpp"
+#include "htciter.hpp"
 
 namespace kondrat
 {
@@ -34,6 +36,11 @@ namespace kondrat
     size_t size() const;
     size_t capacity() const;
     bool empty() const;
+
+    HTIter< Key, Value > begin();
+    HTIter< Key, Value > end();
+    HTCIter< Key, Value > begin() const;
+    HTCIter< Key, Value > end() const;
 
   private:
     size_t getIndex(const Key & key, size_t attempt) const;
@@ -265,6 +272,30 @@ namespace kondrat
   bool HashTable< Key, Value, Hash, Equal >::empty() const
   {
     return size_ == 0;
+  }
+
+  template< class Key, class Value, class Hash, class Equal >
+  HTIter< Key, Value > HashTable< Key, Value, Hash, Equal >::begin()
+  {
+    return HTIter< Key, Value >(data_, data_ + capacity_);
+  }
+
+  template< class Key, class Value, class Hash, class Equal >
+  HTIter< Key, Value > HashTable< Key, Value, Hash, Equal >::end()
+  {
+    return HTIter< Key, Value >(data_ + capacity_, data_ + capacity_);
+  }
+
+  template< class Key, class Value, class Hash, class Equal >
+  HTCIter< Key, Value > HashTable< Key, Value, Hash, Equal >::begin() const
+  {
+    return HTCIter< Key, Value >(data_, data_ + capacity_);
+  }
+
+  template< class Key, class Value, class Hash, class Equal >
+  HTCIter< Key, Value > HashTable< Key, Value, Hash, Equal >::end() const
+  {
+    return HTCIter< Key, Value >(data_ + capacity_, data_ + capacity_);
   }
 
   template< class Key, class Value, class Hash, class Equal >
