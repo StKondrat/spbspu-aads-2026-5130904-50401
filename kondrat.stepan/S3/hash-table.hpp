@@ -11,6 +11,12 @@
 
 namespace kondrat
 {
+  template< class T >
+  struct Equal
+  {
+    bool operator()(const T & lhs, const T & rhs);
+  };
+
   template< class Key, class Value, class Hash, class Equal >
   struct HashTable
   {
@@ -53,6 +59,12 @@ namespace kondrat
     Hash hash_;
     Equal equal_;
   };
+
+  template< class T >
+  bool Equal< T >::operator()(const T & lhs, const T & rhs)
+  {
+    return lhs == rhs;
+  }
 
   template< class Key, class Value, class Hash, class Equal >
   HashTable< Key, Value, Hash, Equal >::HashTable():
