@@ -30,6 +30,7 @@ namespace kondrat
     void mergeFrom(const Graph & first, const Graph & second);
     void extractFrom(const Graph & graph, const topit::Vector< std::string > & vertexes);
 
+    void swap(Graph & graph) noexcept;
   private:
     HashTable< std::string, bool, blake2, Equal< std::string > > vertexes_;
     HashTable< EdgeKey, WeightList, edgeBlake2, Equal< EdgeKey > > edges_;
