@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <string>
 #include <boost/hash2/blake2.hpp>
+#include <boost/hash2/get_integral_result.hpp>
 
 namespace kondrat
 {
@@ -14,17 +15,7 @@ namespace kondrat
       boost::hash2::blake2b_512 hash;
       hash.update(str.data(), str.size());
 
-      boost::hash2::blake2b_512::result_type digest = hash.result();
-
-      size_t result = 0;
-      const unsigned char * bytes = digest.data();
-
-      for (size_t i = 0; i < sizeof(size_t); ++i)
-      {
-        result = result * 256 + bytes[i];
-      }
-
-      return result;
+      return boost::hash2::get_integral_result< size_t >(hash);
     }
   };
 }
