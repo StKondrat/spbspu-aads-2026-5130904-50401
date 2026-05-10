@@ -14,7 +14,7 @@ namespace kondrat
   template< class T >
   struct Equal
   {
-    bool operator()(const T & lhs, const T & rhs);
+    bool operator()(const T & lhs, const T & rhs) const;
   };
 
   template< class Key, class Value, class Hash, class Equal >
@@ -61,7 +61,7 @@ namespace kondrat
   };
 
   template< class T >
-  bool Equal< T >::operator()(const T & lhs, const T & rhs)
+  bool Equal< T >::operator()(const T & lhs, const T & rhs) const
   {
     return lhs == rhs;
   }
