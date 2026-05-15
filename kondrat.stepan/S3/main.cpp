@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <limits>
+#include <sstream>
 #include <string>
 #include "graphs-table.hpp"
 #include "hash-table.hpp"
@@ -66,17 +67,18 @@ int main(int argc, char ** argv)
       }
     }
 
+    std::string args;
+    std::getline(std::cin, args);
+    std::istringstream input(args);
+
     try
     {
       cmd_t command = commands.get(cmd);
-      (table.*command)(std::cin, std::cout, graphName);
+      (table.*command)(input, std::cout, graphName);
     }
     catch (...)
     {
       std::cout << "<INVALID COMMAND>\n";
     }
-
-    std::cin.clear();
-    std::cin.ignore(std::numeric_limits< std::streamsize >::max(), '\n');
   }
 }
