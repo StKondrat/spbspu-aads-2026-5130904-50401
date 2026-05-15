@@ -44,15 +44,23 @@ namespace kondrat
   {
     sortEdges(edges);
 
+    if (edges.isEmpty())
+    {
+      out << '\n';
+      return;
+    }
+
     for (size_t i = 0; i < edges.getSize(); ++i)
     {
       sortVector(edges[i].second);
 
       out << edges[i].first;
+
       for (size_t j = 0; j < edges[i].second.getSize(); ++j)
       {
         out << ' ' << edges[i].second[j];
       }
+
       out << '\n';
     }
   }
@@ -99,6 +107,12 @@ namespace kondrat
 
     sortVector(names);
 
+    if (names.isEmpty())
+    {
+      out << '\n';
+      return;
+    }
+
     for (size_t i = 0; i < names.getSize(); ++i)
     {
       out << names[i] << '\n';
@@ -111,6 +125,12 @@ namespace kondrat
     topit::Vector< std::string > vertexes = graph.getVertexes();
 
     sortVector(vertexes);
+
+    if (vertexes.isEmpty())
+    {
+      out << '\n';
+      return;
+    }
 
     for (size_t i = 0; i < vertexes.getSize(); ++i)
     {
@@ -178,14 +198,33 @@ namespace kondrat
     graph.cut(from, to, weight);
   }
 
-  void GraphsTable::create(std::istream &, std::ostream &, std::string graphName)
+  void GraphsTable::create(std::istream & in, std::ostream &, std::string graphName)
   {
+    size_t count = 0;
+
+    if (!(in >> count))
+    {
+      throw std::logic_error("invalid command");
+    }
+
     if (graphs_.has(graphName))
     {
       throw std::logic_error("invalid command");
     }
 
     Graph graph;
+
+    for (size_t i = 0; i < count; ++i)
+    {
+      std::string vertex;
+
+      if (!(in >> vertex))
+      {
+        throw std::logic_error("invalid command");
+      }
+
+      graph.addVertex(vertex);
+    }
 
     GraphStorage copy(graphs_);
     copy.add(graphName, graph);

@@ -116,7 +116,9 @@ namespace kondrat
       if (it->key.first == vertex)
       {
         EdgeInfo info(it->key.second, it->value);
+        result.pushBack(info);
       }
+
       ++it;
     }
 
