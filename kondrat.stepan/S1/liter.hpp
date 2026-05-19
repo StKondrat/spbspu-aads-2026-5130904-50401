@@ -6,8 +6,11 @@
 
 namespace kondrat
 {
-  template< class T >
-  class Node;
+  namespace detail
+  {
+    template< class T >
+    class Node;
+  }
 
   template< class T >
   class List;
@@ -24,11 +27,11 @@ namespace kondrat
       LIter< T > operator--(int);
       bool operator==(const LIter< T > & rhs) const;
       bool operator!=(const LIter< T > & rhs) const;
-      T & operator*() const;
-      T * operator->() const;
+      T & operator*();
+      T * operator->();
     private:
-      LIter(Node< T > * node) : node_(node) {}
-      Node< T > * node_;
+      LIter(detail::Node< T > * node) : node_(node) {}
+      detail::Node< T > * node_;
   };
 
 
@@ -80,14 +83,14 @@ namespace kondrat
   }
 
   template< class T >
-  T & LIter< T >::operator*() const
+  T & LIter< T >::operator*()
   {
     assert(node_ != nullptr);
     return node_->val;
   }
 
   template< class T >
-  T * LIter< T >::operator->() const
+  T * LIter< T >::operator->()
   {
     assert(node_ != nullptr);
     return std::addressof(node_->val);

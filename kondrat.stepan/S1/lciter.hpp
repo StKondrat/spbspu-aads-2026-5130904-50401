@@ -6,8 +6,11 @@
 
 namespace kondrat
 {
-  template< class T >
-  class Node;
+  namespace detail
+  {
+    template< class T >
+    class Node;
+  }
 
   template< class T >
   class List;
@@ -15,7 +18,6 @@ namespace kondrat
   template< class T >
   class LCIter
   {
-    friend class List< T >;
     public:
       LCIter();
       LCIter< T > & operator++();
@@ -24,16 +26,18 @@ namespace kondrat
       LCIter< T > operator--(int);
       bool operator==(const LCIter< T > & rhs) const;
       bool operator!=(const LCIter< T > & rhs) const;
-      T & operator*() const;
-      T * operator->() const;
+      const T & operator*() const;
+      const T * operator->() const;
     private:
-      LCIter(Node< T > * node) : node_(node) {}
-      Node< T > * node_;
+      friend class List< T >;
+      LCIter(detail::Node< T > * node);
+      detail::Node< T > * node_;
   };
 
-
   template< class T >
-  LCIter< T >::LCIter() : node_(nullptr) {}
+  LCIter< T >::LCIter():
+    node_(nullptr)
+  {}
 
   template< class T >
   LCIter< T > & LCIter< T >::operator++()
@@ -80,18 +84,23 @@ namespace kondrat
   }
 
   template< class T >
-  T & LCIter< T >::operator*() const
+  const T & LCIter< T >::operator*() const
   {
     assert(node_ != nullptr);
     return node_->val;
   }
 
   template< class T >
-  T * LCIter< T >::operator->() const
+  const T * LCIter< T >::operator->() const
   {
     assert(node_ != nullptr);
     return std::addressof(node_->val);
   }
+
+  template< class T >
+  LCIter< T >::LCIter(detail::Node< T > * node):
+    node_(node)
+  {};
 }
 
 #endif

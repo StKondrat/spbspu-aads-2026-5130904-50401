@@ -3,20 +3,28 @@
 
 #include <cstddef>
 #include <cassert>
+#include <utility>
 #include "liter.hpp"
 #include "lciter.hpp"
 
 namespace kondrat
 {
-  template< class T >
-  class Node
+  namespace detail
   {
-    public:
-      Node(T value, Node< T > * n, Node< T > * p) : val(value), next(n), prev(p) {}
-      T val;
-      Node< T > * next;
-      Node< T > * prev;
-  };
+    template< class T >
+    class Node
+    {
+      public:
+        Node(T value, Node< T > * n, Node< T > * p):
+          val(value),
+          next(n),
+          prev(p)
+        {}
+        T val;
+        Node< T > * next;
+        Node< T > * prev;
+    };
+  }
 
   template< class T >
   class LIter;
@@ -29,59 +37,67 @@ namespace kondrat
   {
     public:
       List();
-      ~List();
       List(const List< T > & list);
+      List(List< T > && list) noexcept;
+      ~List();
+
       List< T > & operator=(const List< T > & list);
-      List(List< T > && list);
-      List< T > & operator=(List< T > && list);
+      List< T > & operator=(List< T > && list) noexcept;
 
-      LIter< T > begin();
-      LIter< T > end();
-      LCIter< T > begin() const;
-      LCIter< T > end() const;
+      LIter< T > begin() noexcept;
+      LIter< T > end() noexcept;
+      LCIter< T > begin() const noexcept;
+      LCIter< T > end() const noexcept;
 
-      T & front();
-      T & back();
-      const T & front() const;
-      const T & back() const;
+      T & front() noexcept;
+      T & back() noexcept;
+      const T & front() const noexcept;
+      const T & back() const noexcept;
 
       void pushFront(const T & value);
       void pushBack(const T & value);
+      void pushFront(T && value);
+      void pushBack(T && value);
 
-      void popFront();
-      void popBack();
+      void popFront() noexcept;
+      void popBack() noexcept;
 
-      void clear();
+      void clear() noexcept;
 
-      size_t size() const;
-      bool empty() const;
+      size_t size() const noexcept;
+      bool empty() const noexcept;
+
+      void swap(List< T > & list) noexcept;
     private:
-      Node< T > * fake_;
+      detail::Node< T > * fake_;
       size_t size_;
   };
 
   template< class T >
-  Node< T > * makeFake()
+  detail::Node< T > * makeFake()
   {
-    Node< T > * fake = static_cast< Node< T > * >(::operator new(sizeof(Node< T >)));
+    detail::Node< T > * fake = static_cast< detail::Node< T > * >(::operator new(sizeof(detail::Node< T >)));
     fake->next = nullptr;
     fake->prev = nullptr;
     return fake;
   }
 
   template< class T >
-  void removeFake(Node< T > * fake) noexcept
+  void removeFake(detail::Node< T > * fake) noexcept
   {
     ::operator delete(fake);
   }
 
   template< class T >
-  List< T >::List() : fake_(makeFake< T >()), size_(0) {}
+  List< T >::List():
+    fake_(makeFake< T >()),
+    size_(0)
+  {}
 
   template< class T >
-  void List< T >::clear()
+  void List< T >::clear() noexcept
   {
-    Node< T > * cur = fake_->next;
+    detail::Node< T > * cur = fake_->next;
 
     while (cur != nullptr)
     {
@@ -105,7 +121,7 @@ namespace kondrat
   template< class T >
   void List< T >::pushFront(const T & value)
   {
-    Node< T > * node = new Node< T >(value, fake_->next, fake_);
+    detail::Node< T > * node = new detail::Node< T >(value, fake_->next, fake_);
     if (fake_->next != nullptr)
     {
       fake_->next->prev = node;
@@ -121,28 +137,46 @@ namespace kondrat
   }
 
   template< class T >
-  T & List< T >::front()
+  void List< T >::pushFront(T && value)
+  {
+    detail::Node< T > * node = new detail::Node< T >(std::move(value), fake_->next, fake);
+    if (fake_->next != nullptr)
+    {
+      fake_->next->prev = node;
+    }
+    else
+    {
+      fake_->prev = node;
+    }
+
+    fake_->next = node;
+
+    ++size_;
+  }
+
+  template< class T >
+  T & List< T >::front() noexcept
   {
     assert(fake_->next != nullptr);
     return fake_->next->val;
   }
 
   template< class T >
-  const T & List< T >::front() const
+  const T & List< T >::front() const noexcept
   {
     assert(fake_->next != nullptr);
     return fake_->next->val;
   }
 
   template< class T >
-  T & List< T >::back()
+  T & List< T >::back() noexcept
   {
     assert(fake_->prev != nullptr);
     return fake_->prev->val;
   }
 
   template< class T >
-  const T & List< T >::back() const
+  const T & List< T >::back() const noexcept
   {
     assert(fake_->prev != nullptr);
     return fake_->prev->val;
@@ -151,7 +185,7 @@ namespace kondrat
   template< class T >
   void List< T >::pushBack(const T & value)
   {
-    Node< T > * node = new Node< T >(value, nullptr, fake_->prev);
+    detail::Node< T > * node = new detail::Node< T >(value, nullptr, fake_->prev);
 
     if (fake_->prev != nullptr)
     {
@@ -167,11 +201,29 @@ namespace kondrat
   }
 
   template< class T >
-  void List< T >::popFront()
+  void List< T >::pushBack(T && value)
+  {
+    detail::Node< T > * node = new detail::Node< T >(std::move(value), nullptr, fake_->prev);
+
+    if (fake_->prev != nullptr)
+    {
+      fake_->prev->next = node;
+    }
+    else
+    {
+      fake_->next = node;
+    }
+
+    fake_->prev = node;
+    ++size_;
+  }
+
+  template< class T >
+  void List< T >::popFront() noexcept
   {
     assert(fake_->next != nullptr);
 
-    Node< T > * node = fake_->next;
+    detail::Node< T > * node = fake_->next;
     fake_->next = node->next;
 
     if (fake_->next != nullptr)
@@ -188,11 +240,11 @@ namespace kondrat
   }
 
   template< class T >
-  void List< T >::popBack()
+  void List< T >::popBack() noexcept
   {
     assert(fake_->prev != nullptr);
 
-    Node< T > * node = fake_->prev;
+    detail::Node< T > * node = fake_->prev;
     fake_->prev = node->prev;
 
     if (fake_->prev != fake_)
@@ -210,45 +262,47 @@ namespace kondrat
   }
 
   template< class T >
-  LIter< T > List< T >::begin()
+  LIter< T > List< T >::begin() noexcept
   {
     return LIter< T >(fake_->next);
   }
 
   template< class T >
-  LIter< T > List< T >::end()
+  LIter< T > List< T >::end() noexcept
   {
     return LIter< T >(nullptr);
   }
 
   template< class T >
-  LCIter< T > List< T >::begin() const
+  LCIter< T > List< T >::begin() const noexcept
   {
     return LCIter< T >(fake_->next);
   }
 
   template< class T >
-  LCIter< T > List< T >::end() const
+  LCIter< T > List< T >::end() const noexcept
   {
     return LCIter< T >(nullptr);
   }
 
   template< class T >
-  size_t List< T >::size() const
+  size_t List< T >::size() const noexcept
   {
     return size_;
   }
 
   template< class T >
-  bool List< T >::empty() const
+  bool List< T >::empty() const noexcept
   {
     return size_ == 0;
   }
 
   template< class T >
-  List< T >::List(const List< T > & list): fake_(makeFake< T >()), size_(0)
+  List< T >::List(const List< T > & list):
+    fake_(makeFake< T >()),
+    size_(0)
   {
-    Node< T > * cur = list.fake_->next;
+    detail::Node< T > * cur = list.fake_->next;
 
     while (cur != nullptr)
     {
@@ -260,50 +314,35 @@ namespace kondrat
   template< class T >
   List< T > & List< T >::operator=(const List< T > & list)
   {
-    if (this == &list)
+    if (this != &list)
     {
-      return *this;
+      List< T > copy(list);
+      swap(copy);
     }
 
-    clear();
-
-    Node< T > * cur = list.fake_->next;
-
-    while (cur != nullptr)
-    {
-      pushBack(cur->val);
-      cur = cur->next;
-    }
     return *this;
   }
 
   template< class T >
-  List< T >::List(List< T > && list):
-    fake_(list.fake_),
-    size_(list.size_)
+  List< T >::List(List< T > && list) noexcept:
+    fake_(std::exchange(list.fake_, makeFake< T >())),
+    size_(std::exchange(list.size_, 0))
+  {}
+
+  template< class T >
+  List< T > & List< T >::operator=(List< T > && list) noexcept
   {
-    list.fake_ = makeFake< T >();
-    list.size_ = 0;
+    assert(this != &list);
+    swap(list);
+
+    return *this;
   }
 
   template< class T >
-  List< T > & List< T >::operator=(List< T > && list)
+  void List< T >::swap(List< T > & list) noexcept
   {
-    if (this == &list)
-    {
-      return *this;
-    }
-
-    clear();
-    removeFake(fake_);
-
-    fake_ = list.fake_;
-    size_ = list.size_;
-
-    list.fake_ = makeFake< T >();
-    list.size_ = 0;
-
-    return *this;
+    std::swap(fake_, list.fake_);
+    std::swap(size_, list.size_);
   }
 }
 
