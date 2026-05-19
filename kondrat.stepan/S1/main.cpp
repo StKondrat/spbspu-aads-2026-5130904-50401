@@ -82,9 +82,9 @@ namespace
 
     while (it != end)
     {
-      if (!((*it).second.empty()))
+      if (!(it->second.empty()))
       {
-        size_t value = (*it).second.front();
+        size_t value = it->second.front();
 
         if (!first)
         {
@@ -135,7 +135,7 @@ namespace
   {
     if (sums.empty())
     {
-      std::cout << 0 << '\n';
+      std::cout << 0;
       return;
     }
 
