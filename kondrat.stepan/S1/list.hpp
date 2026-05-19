@@ -101,7 +101,7 @@ namespace kondrat
 
     while (cur != nullptr)
     {
-      Node< T > * next = cur->next;
+      detail::Node< T > * next = cur->next;
       delete cur;
       cur = next;
     }
@@ -139,7 +139,7 @@ namespace kondrat
   template< class T >
   void List< T >::pushFront(T && value)
   {
-    detail::Node< T > * node = new detail::Node< T >(std::move(value), fake_->next, fake);
+    detail::Node< T > * node = new detail::Node< T >(std::move(value), fake_->next, fake_);
     if (fake_->next != nullptr)
     {
       fake_->next->prev = node;
