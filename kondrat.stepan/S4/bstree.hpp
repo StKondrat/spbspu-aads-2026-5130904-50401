@@ -10,7 +10,7 @@
 
 namespace kondrat
 {
-  template< class Key, class Value, class Compare >
+  template< class Key, class Value, class Compare = Less< Key > >
   class BSTree
   {
   public:
@@ -53,6 +53,15 @@ namespace kondrat
     Node< Key, Value > * root_;
     size_t size_;
     Compare comp_;
+  };
+
+  template< class T >
+  struct Less
+  {
+    bool operator()(const T & lhs, const T & rhs) const
+    {
+      return lhs < rhs;
+    }
   };
 
   template< class Key, class Value, class Compare >
