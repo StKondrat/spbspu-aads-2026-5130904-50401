@@ -27,10 +27,10 @@ namespace kondrat
 
 template< class Key, class Value >
 kondrat::Node< Key, Value >::Node(const Key & key, const Value & value):
-data_(std::pair< Key, Value >(key, value)),
-right_(nullptr),
-left_(nullptr),
-parent_(nullptr)
+  data_(std::pair< Key, Value >(key, value)),
+  right_(nullptr),
+  left_(nullptr),
+  parent_(nullptr)
 {}
 
 #endif
