@@ -10,6 +10,15 @@
 
 namespace kondrat
 {
+  template< class T >
+  struct Less
+  {
+    bool operator()(const T & lhs, const T & rhs) const
+    {
+      return lhs < rhs;
+    }
+  };
+
   template< class Key, class Value, class Compare = Less< Key > >
   class BSTree
   {
@@ -53,15 +62,6 @@ namespace kondrat
     Node< Key, Value > * root_;
     size_t size_;
     Compare comp_;
-  };
-
-  template< class T >
-  struct Less
-  {
-    bool operator()(const T & lhs, const T & rhs) const
-    {
-      return lhs < rhs;
-    }
   };
 
   template< class Key, class Value, class Compare >
@@ -190,7 +190,7 @@ namespace kondrat
     }
 
     delete node;
-    --size;
+    --size_;
 
     return value;
   }
@@ -366,11 +366,11 @@ namespace kondrat
 
     while (current != nullptr)
     {
-      if (cmp_(key, current->data_.first))
+      if (comp_(key, current->data_.first))
       {
         current = current->left_;
       }
-      else if (cmp_(current->data_.first, key))
+      else if (comp_(current->data_.first, key))
       {
         current = current->right_;
       }

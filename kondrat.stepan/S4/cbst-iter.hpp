@@ -66,7 +66,7 @@ namespace kondrat
   template< class Key, class Value >
   CBSTIterator< Key, Value > CBSTIterator< Key, Value >::operator++(int)
   {
-    BSTIterator temp(*this);
+    CBSTIterator temp(*this);
     ++(*this);
     return temp;
   }
@@ -101,7 +101,7 @@ namespace kondrat
   template< class Key, class Value >
   CBSTIterator< Key, Value > CBSTIterator< Key, Value >::operator--(int)
   {
-    BSTIterator temp(*this);
+    CBSTIterator temp(*this);
     --(*this);
     return temp;
   }
