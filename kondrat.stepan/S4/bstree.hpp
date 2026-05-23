@@ -274,7 +274,7 @@ namespace kondrat
       return end();
     }
 
-    return iterator(getMin(root_));
+    return iterator(getMin(root_), root_);
   }
 
   template< class Key, class Value, class Compare >
@@ -291,7 +291,7 @@ namespace kondrat
       return end();
     }
 
-    return const_iterator(getMin(root_));
+    return const_iterator(getMin(root_), root_);
   }
 
   template< class Key, class Value, class Compare >
