@@ -86,11 +86,10 @@ namespace
     }
   }
 
-  size_t printOneRow(kondrat::List< pairN > & data)
+  size_t formOneRow(kondrat::List< pairN > & data, kondrat::List< size_t > & row)
   {
     kondrat::LIter< pairN > it = data.begin();
     kondrat::LIter< pairN > end = data.end();
-    kondrat::List< size_t > row;
     size_t sum = 0;
 
     while (it != end)
@@ -112,8 +111,20 @@ namespace
       ++it;
     }
 
-    printRow(row);
     return sum;
+  }
+
+  void printRows(const kondrat::List< kondrat::List< size_t > > & rows)
+  {
+    kondrat::LCIter< kondrat::List< size_t > > it = rows.begin();
+    kondrat::LCIter< kondrat::List< size_t > > end = rows.end();
+
+    while (it != end)
+    {
+      printRow(*it);
+      std::cout << '\n';
+      ++it;
+    }
   }
 
   void printSums(const kondrat::List< size_t > & sums)
@@ -150,19 +161,18 @@ int main()
     return 0;
   }
 
-  printNames(data);
-  std::cout << '\n';
-
   kondrat::List< pairN > copy(data);
+  kondrat::List< kondrat::List< size_t > > rows;
   kondrat::List< size_t > sums;
 
   try
   {
     while (hasNumbers(copy))
     {
-      size_t sum = printOneRow(copy);
+      kondrat::List< size_t > row;
+      size_t sum = formOneRow(copy, row);
+      rows.pushBack(std::move(row));
       sums.pushBack(sum);
-      std::cout << '\n';
     }
   }
   catch (const std::overflow_error &)
@@ -171,6 +181,9 @@ int main()
     return 1;
   }
 
+  printNames(data);
+  std::cout << '\n';
+  printRows(rows);
   printSums(sums);
   std::cout << '\n';
 
