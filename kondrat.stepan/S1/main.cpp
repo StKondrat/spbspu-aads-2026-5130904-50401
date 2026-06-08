@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <limits>
 #include <utility>
-#include "list.hpp"
+#include "new_list.hpp"
 
 namespace
 {
@@ -68,14 +68,29 @@ namespace
     return false;
   }
 
+  void printRow(const kondrat::List< size_t > & row)
+  {
+    kondrat::LCIter< size_t > it = row.begin();
+    kondrat::LCIter< size_t > end = row.end();
+
+    if (it != end)
+    {
+      std::cout << *it;
+      ++it;
+    }
+
+    while (it != end)
+    {
+      std::cout << ' ' << *it;
+      ++it;
+    }
+  }
+
   size_t printOneRow(kondrat::List< pairN > & data)
   {
     kondrat::LIter< pairN > it = data.begin();
     kondrat::LIter< pairN > end = data.end();
-
-    bool first = true;
-    bool overflow = false;
-
+    kondrat::List< size_t > row;
     size_t sum = 0;
 
     while (it != end)
@@ -84,37 +99,20 @@ namespace
       {
         size_t value = it->second.front();
 
-        if (!first)
+        if (sum > std::numeric_limits< size_t >::max() - value)
         {
-          std::cout << ' ';
+          throw std::overflow_error("overflow");
         }
 
-        std::cout << value;
-
-        if (!overflow)
-        {
-          if (sum > std::numeric_limits< size_t >::max() - value)
-          {
-            overflow = true;
-          }
-          else
-          {
-            sum += value;
-          }
-        }
-
+        sum += value;
+        row.pushBack(value);
         it->second.popFront();
-        first = false;
       }
 
       ++it;
     }
 
-    if (overflow)
-    {
-      throw std::overflow_error("overflow");
-    }
-
+    printRow(row);
     return sum;
   }
 
