@@ -19,28 +19,28 @@ namespace kondrat
   class LCIter
   {
     public:
-      LCIter();
-      LCIter< T > & operator++();
-      LCIter< T > operator++(int);
-      LCIter< T > & operator--();
-      LCIter< T > operator--(int);
-      bool operator==(const LCIter< T > & rhs) const;
-      bool operator!=(const LCIter< T > & rhs) const;
-      const T & operator*() const;
-      const T * operator->() const;
+      LCIter() noexcept;
+      LCIter< T > & operator++() noexcept;
+      LCIter< T > operator++(int) noexcept;
+      LCIter< T > & operator--() noexcept;
+      LCIter< T > operator--(int) noexcept;
+      bool operator==(const LCIter< T > & rhs) const noexcept;
+      bool operator!=(const LCIter< T > & rhs) const noexcept;
+      const T & operator*() const noexcept;
+      const T * operator->() const noexcept;
     private:
-      friend class List< T >;
-      LCIter(detail::Node< T > * node);
       detail::Node< T > * node_;
+      LCIter(detail::Node< T > * node) noexcept;
+      friend class List< T >;
   };
 
   template< class T >
-  LCIter< T >::LCIter():
+  LCIter< T >::LCIter() noexcept:
     node_(nullptr)
   {}
 
   template< class T >
-  LCIter< T > & LCIter< T >::operator++()
+  LCIter< T > & LCIter< T >::operator++() noexcept
   {
     assert(node_ != nullptr);
     node_ = node_->next;
@@ -48,7 +48,7 @@ namespace kondrat
   }
 
   template< class T >
-  LCIter< T > LCIter< T >::operator++(int)
+  LCIter< T > LCIter< T >::operator++(int) noexcept
   {
     LCIter< T > temp = *this;
     ++(*this);
@@ -56,7 +56,7 @@ namespace kondrat
   }
 
   template< class T >
-  LCIter< T > & LCIter< T >::operator--()
+  LCIter< T > & LCIter< T >::operator--() noexcept
   {
     assert(node_ != nullptr);
     node_ = node_->prev;
@@ -64,7 +64,7 @@ namespace kondrat
   }
 
   template< class T >
-  LCIter< T > LCIter< T >::operator--(int)
+  LCIter< T > LCIter< T >::operator--(int) noexcept
   {
     LCIter< T > temp = *this;
     --(*this);
@@ -72,35 +72,35 @@ namespace kondrat
   }
 
   template< class T >
-  bool LCIter< T >::operator==(const LCIter< T > & rhs) const
+  bool LCIter< T >::operator==(const LCIter< T > & rhs) const noexcept
   {
     return node_ == rhs.node_;
   }
 
   template< class T >
-  bool LCIter< T >::operator!=(const LCIter< T > & rhs) const
+  bool LCIter< T >::operator!=(const LCIter< T > & rhs) const noexcept
   {
     return !(node_ == rhs.node_);
   }
 
   template< class T >
-  const T & LCIter< T >::operator*() const
+  const T & LCIter< T >::operator*() const noexcept
   {
     assert(node_ != nullptr);
     return node_->val;
   }
 
   template< class T >
-  const T * LCIter< T >::operator->() const
+  const T * LCIter< T >::operator->() const noexcept
   {
     assert(node_ != nullptr);
     return std::addressof(node_->val);
   }
 
   template< class T >
-  LCIter< T >::LCIter(detail::Node< T > * node):
+  LCIter< T >::LCIter(detail::Node< T > * node) noexcept:
     node_(node)
-  {};
+  {}
 }
 
 #endif

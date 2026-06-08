@@ -15,11 +15,6 @@ namespace kondrat
     class Node
     {
       public:
-        Node(T value, Node< T > * n, Node< T > * p):
-          val(value),
-          next(n),
-          prev(p)
-        {}
         T val;
         Node< T > * next;
         Node< T > * prev;
@@ -39,7 +34,7 @@ namespace kondrat
       List();
       List(const List< T > & list);
       List(List< T > && list) noexcept;
-      ~List();
+      ~List() noexcept;
 
       List< T > & operator=(const List< T > & list);
       List< T > & operator=(List< T > && list) noexcept;
@@ -71,12 +66,18 @@ namespace kondrat
     private:
       detail::Node< T > * fake_;
       size_t size_;
+
+      template< class U >
+      void pushFrontImpl(U && value);
+      template< class U >
+      void pushBackImpl(U && value);
   };
 
   template< class T >
   detail::Node< T > * makeFake()
   {
-    detail::Node< T > * fake = static_cast< detail::Node< T > * >(::operator new(sizeof(detail::Node< T >)));
+    void * storage = ::operator new(sizeof(detail::Node< T >));
+    detail::Node< T > * fake = static_cast< detail::Node< T > * >(storage);
     fake->next = nullptr;
     fake->prev = nullptr;
     return fake;
@@ -112,7 +113,7 @@ namespace kondrat
   }
 
   template< class T >
-  List< T >::~List()
+  List< T >::~List() noexcept
   {
     clear();
     removeFake(fake_);
@@ -121,25 +122,24 @@ namespace kondrat
   template< class T >
   void List< T >::pushFront(const T & value)
   {
-    detail::Node< T > * node = new detail::Node< T >(value, fake_->next, fake_);
-    if (fake_->next != nullptr)
-    {
-      fake_->next->prev = node;
-    }
-    else
-    {
-      fake_->prev = node;
-    }
-
-    fake_->next = node;
-
-    ++size_;
+    pushFrontImpl(value);
   }
 
   template< class T >
   void List< T >::pushFront(T && value)
   {
-    detail::Node< T > * node = new detail::Node< T >(std::move(value), fake_->next, fake_);
+    pushFrontImpl(std::forward< T >(value));
+  }
+
+  template< class T >
+  template< class U >
+  void List< T >::pushFrontImpl(U && value)
+  {
+    detail::Node< T > * node = new detail::Node< T >{
+      std::forward< U >(value),
+      fake_->next,
+      fake_
+    };
     if (fake_->next != nullptr)
     {
       fake_->next->prev = node;
@@ -185,25 +185,24 @@ namespace kondrat
   template< class T >
   void List< T >::pushBack(const T & value)
   {
-    detail::Node< T > * node = new detail::Node< T >(value, nullptr, fake_->prev);
-
-    if (fake_->prev != nullptr)
-    {
-      fake_->prev->next = node;
-    }
-    else
-    {
-      fake_->next = node;
-    }
-
-    fake_->prev = node;
-    ++size_;
+    pushBackImpl(value);
   }
 
   template< class T >
   void List< T >::pushBack(T && value)
   {
-    detail::Node< T > * node = new detail::Node< T >(std::move(value), nullptr, fake_->prev);
+    pushBackImpl(std::forward< T >(value));
+  }
+
+  template< class T >
+  template< class U >
+  void List< T >::pushBackImpl(U && value)
+  {
+    detail::Node< T > * node = new detail::Node< T >{
+      std::forward< U >(value),
+      nullptr,
+      fake_->prev
+    };
 
     if (fake_->prev != nullptr)
     {
@@ -302,12 +301,21 @@ namespace kondrat
     fake_(makeFake< T >()),
     size_(0)
   {
-    detail::Node< T > * cur = list.fake_->next;
-
-    while (cur != nullptr)
+    try
     {
-      pushBack(cur->val);
-      cur = cur->next;
+      detail::Node< T > * cur = list.fake_->next;
+
+      while (cur != nullptr)
+      {
+        pushBack(cur->val);
+        cur = cur->next;
+      }
+    }
+    catch (...)
+    {
+      clear();
+      removeFake(fake_);
+      throw;
     }
   }
 
