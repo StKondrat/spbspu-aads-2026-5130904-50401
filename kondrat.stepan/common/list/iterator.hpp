@@ -1,5 +1,5 @@
-#ifndef LITER_HPP
-#define LITER_HPP
+#ifndef ITERATOR_HPP
+#define ITERATOR_HPP
 
 #include <cassert>
 #include <memory>

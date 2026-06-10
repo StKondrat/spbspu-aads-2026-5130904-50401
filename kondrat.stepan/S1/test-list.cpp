@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <utility>
-#include "list.hpp"
+#include <list/list.hpp>
 
 BOOST_AUTO_TEST_SUITE(ListTestSuite)
 

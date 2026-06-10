@@ -1,5 +1,5 @@
-#ifndef LCITER_HPP
-#define LCITER_HPP
+#ifndef CONST_ITERATOR_HPP
+#define CONST_ITERATOR_HPP
 
 #include <cassert>
 #include <memory>
