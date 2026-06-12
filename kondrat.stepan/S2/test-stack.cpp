@@ -10,17 +10,17 @@ BOOST_AUTO_TEST_CASE(CreationOfStack)
   BOOST_CHECK(s.size() == 0);
 }
 
-BOOST_AUTO_TEST_CASE(PushFirst)
+BOOST_AUTO_TEST_CASE(PushFront)
 {
   kondrat::Stack< int > s;
   s.push(1);
   s.push(2);
 
   BOOST_CHECK(s.size() == 2);
-  BOOST_CHECK(s.first() == 2);
+  BOOST_CHECK(s.front() == 2);
 }
 
-BOOST_AUTO_TEST_CASE(DropClear)
+BOOST_AUTO_TEST_CASE(PopClear)
 {
   kondrat::Stack< int > s;
   s.push(1);
@@ -28,11 +28,12 @@ BOOST_AUTO_TEST_CASE(DropClear)
   s.push(3);
 
   BOOST_CHECK(s.size() == 3);
+  BOOST_CHECK(s.front() == 3);
 
-  int res = s.drop();
+  s.pop();
 
   BOOST_CHECK(s.size() == 2);
-  BOOST_CHECK(res == 3);
+  BOOST_CHECK(s.front() == 2);
 
   s.clear();
 
@@ -50,17 +51,17 @@ BOOST_AUTO_TEST_CASE(OperatorsConstructors)
   kondrat::Stack< int > sCopy(s);
   BOOST_CHECK(sCopy.size() == 3);
   BOOST_CHECK(!sCopy.empty());
-  BOOST_CHECK(sCopy.first() == 52);
+  BOOST_CHECK(sCopy.front() == 52);
 
   kondrat::Stack< int > sMove(std::move(sCopy));
   BOOST_CHECK(sCopy.size() == 0);
   BOOST_CHECK(sCopy.empty());
-  BOOST_CHECK(sMove.first() == 52);
+  BOOST_CHECK(sMove.front() == 52);
   BOOST_CHECK(sMove.size() == 3);
 
   kondrat::Stack< int > sCopyOperator = sMove;
   BOOST_CHECK(sCopyOperator.size() == 3);
-  BOOST_CHECK(sCopyOperator.first() == 52);
+  BOOST_CHECK(sCopyOperator.front() == 52);
   BOOST_CHECK(sMove.size() == 3);
 
   kondrat::Stack< int > sMoveOperator = std::move(sCopyOperator);

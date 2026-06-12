@@ -1,5 +1,5 @@
-#include "graph.hpp"
 #include <stdexcept>
+#include "graph.hpp"
 
 namespace kondrat
 {

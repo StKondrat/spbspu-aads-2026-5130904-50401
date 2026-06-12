@@ -4,9 +4,9 @@
 #include <string>
 #include <cstddef>
 #include <utility>
+#include <vector/top-it-vector.hpp>
 #include "hash-table.hpp"
 #include "hash-func.hpp"
-#include "../Common/top-it-vector.hpp"
 
 namespace kondrat
 {

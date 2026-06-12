@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <limits>
 #include <utility>
-#include "list.hpp"
+#include <list/list.hpp>
 
 namespace kondrat
 {

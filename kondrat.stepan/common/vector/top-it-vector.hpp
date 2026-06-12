@@ -1,14 +1,13 @@
 #ifndef TOP_IT_VECTOR_HPP
 #define TOP_IT_VECTOR_HPP
 
-#include "viter.hpp"
-#include "vciter.hpp"
-
 #include <cstddef>
 #include <stdexcept>
 #include <utility>
 #include <initializer_list>
 #include <memory>
+#include "iterator.hpp"
+#include "const-iterator.hpp"
 
 namespace topit
 {
