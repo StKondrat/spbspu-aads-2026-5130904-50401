@@ -1,37 +1,60 @@
-#include "math-funcs.hpp"
+#include <fstream>
 #include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include "math-funcs.hpp"
+#include "stack.hpp"
 
 int main(int argc, char ** argv)
 {
-  using namespace kondrat;
-
   if (argc > 2)
   {
     std::cerr << "Error\n";
     return 1;
   }
 
-  Stack< ll > result;
+  std::ifstream file;
+  std::istream * input = std::addressof(std::cin);
+
+  if (argc == 2)
+  {
+    file.open(argv[1]);
+    if (!file)
+    {
+      std::cerr << "bad file\n";
+      return 1;
+    }
+    input = std::addressof(file);
+  }
+
+  kondrat::Stack< kondrat::ll > result;
 
   try
   {
-    if (argc == 2)
+    std::string line;
+    while (std::getline(*input, line))
     {
-      std::ifstream file(argv[1]);
-      if (!file)
+      if (!line.empty())
       {
-        std::cerr << "bad file\n";
-        return 1;
+        result.push(kondrat::calculateExpression(line));
       }
-      readExpressions(file, result);
     }
-    else
+
+    if (!result.empty())
     {
-      readExpressions(std::cin, result);
+      std::cout << result.front();
+      result.pop();
     }
-    printResults(result, std::cout);
+
+    while (!result.empty())
+    {
+      std::cout << ' ' << result.front();
+      result.pop();
+    }
+    std::cout << '\n';
   }
-  catch(const std::exception & e)
+  catch (const std::exception & e)
   {
     std::cerr << e.what() << "\n";
     return 1;

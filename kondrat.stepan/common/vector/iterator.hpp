@@ -1,5 +1,5 @@
-#ifndef VCITER_HPP
-#define VCITER_HPP
+#ifndef ITERATOR_HPP
+#define ITERATOR_HPP
 
 #include <cstddef>
 

@@ -1,8 +1,10 @@
 #ifndef STACK_HPP
 #define STACK_HPP
-#include "../Common/list.hpp"
+
+#include <cstddef>
 #include <stdexcept>
 #include <utility>
+#include <list/list.hpp>
 
 namespace kondrat
 {
@@ -10,51 +12,26 @@ namespace kondrat
   class Stack
   {
     public:
-      Stack();
+      Stack() = default;
       ~Stack() = default;
-      Stack(const Stack< T > & stack);
-      Stack< T > & operator=(const Stack< T > & stack);
-      Stack(Stack< T > && stack);
-      Stack< T > & operator=(Stack< T > && stack);
+      Stack(const Stack< T > & stack) = default;
+      Stack< T > & operator=(const Stack< T > & stack) = default;
+      Stack(Stack< T > && stack) = default;
+      Stack< T > & operator=(Stack< T > && stack) = default;
 
       bool empty() const;
       size_t size() const;
 
-      const T & first() const;
+      T & front();
+      const T & front() const;
 
       void push(const T & rhs);
-      T drop();
+      void push(T && rhs);
+      void pop();
       void clear();
-
     private:
       List< T > list_;
   };
-
-  template< class T >
-  Stack< T >::Stack() : list_() {}
-
-  template< class T >
-  Stack< T >::Stack(const Stack< T > & stack) : list_(stack.list_) {}
-
-  template< class T >
-  Stack< T > & Stack< T >::operator=(const Stack< T > & stack)
-  {
-    list_ = stack.list_;
-    return *this;
-  }
-
-  template< class T >
-  Stack< T >::Stack(Stack< T > && stack) : list_(std::move(stack.list_)) {}
-
-  template< class T >
-  Stack< T > & Stack< T >::operator=(Stack< T > && stack)
-  {
-    if (this != &stack)
-    {
-      list_ = std::move(stack.list_);
-    }
-    return *this;
-  }
 
   template< class T >
   bool Stack< T >::empty() const
@@ -69,7 +46,17 @@ namespace kondrat
   }
 
   template< class T >
-  const T & Stack< T >::first() const
+  T & Stack< T >::front()
+  {
+    if (empty())
+    {
+      throw std::runtime_error("empty stack");
+    }
+    return list_.back();
+  }
+
+  template< class T >
+  const T & Stack< T >::front() const
   {
     if (empty())
     {
@@ -85,16 +72,19 @@ namespace kondrat
   }
 
   template< class T >
-  T Stack< T >::drop()
+  void Stack< T >::push(T && rhs)
+  {
+    list_.pushBack(std::move(rhs));
+  }
+
+  template< class T >
+  void Stack< T >::pop()
   {
     if (empty())
     {
       throw std::runtime_error("empty stack");
     }
-
-    T value = list_.back();
     list_.popBack();
-    return value;
   }
 
   template< class T >

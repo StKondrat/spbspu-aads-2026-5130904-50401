@@ -1,5 +1,5 @@
-#ifndef VITER_HPP
-#define VITER_HPP
+#ifndef CONST_ITERATOR_HPP
+#define CONST_ITERATOR_HPP
 
 #include <cstddef>
 

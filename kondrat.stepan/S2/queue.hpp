@@ -1,8 +1,10 @@
 #ifndef QUEUE_HPP
 #define QUEUE_HPP
-#include "../Common/list.hpp"
+
+#include <cstddef>
 #include <stdexcept>
 #include <utility>
+#include <list/list.hpp>
 
 namespace kondrat
 {
@@ -10,52 +12,26 @@ namespace kondrat
   class Queue
   {
     public:
-      Queue();
+      Queue() = default;
       ~Queue() = default;
-      Queue(const Queue< T > & queue);
-      Queue< T > & operator=(const Queue< T > & queue);
-      Queue(Queue< T > && queue);
-      Queue< T > & operator=(Queue< T > && queue);
+      Queue(const Queue< T > & queue) = default;
+      Queue< T > & operator=(const Queue< T > & queue) = default;
+      Queue(Queue< T > && queue) = default;
+      Queue< T > & operator=(Queue< T > && queue) = default;
 
       bool empty() const;
       size_t size() const;
 
-      const T & first() const;
-      const T & last() const;
+      T & front();
+      const T & front() const;
 
       void push(const T & rhs);
-      T drop();
+      void push(T && rhs);
+      void pop();
       void clear();
-
     private:
       List< T > list_;
   };
-
-  template< class T >
-  Queue< T >::Queue() : list_() {}
-
-  template< class T >
-  Queue< T >::Queue(const Queue< T > & queue) : list_ (queue.list_) {}
-
-  template< class T >
-  Queue< T > & Queue< T >::operator=(const Queue< T > & queue)
-  {
-    list_ = queue.list_;
-    return *this;
-  }
-
-  template< class T >
-  Queue< T >::Queue(Queue< T > && queue) : list_(std::move(queue.list_)) {}
-
-  template< class T >
-  Queue< T > & Queue< T >::operator=(Queue< T > && queue)
-  {
-    if (this != &queue)
-    {
-      list_ = std::move(queue.list_);
-    }
-    return *this;
-  }
 
   template< class T >
   bool Queue< T >::empty() const
@@ -70,7 +46,7 @@ namespace kondrat
   }
 
   template< class T >
-  const T & Queue< T >::first() const
+  T & Queue< T >::front()
   {
     if (empty())
     {
@@ -80,13 +56,13 @@ namespace kondrat
   }
 
   template< class T >
-  const T & Queue< T >::last() const
+  const T & Queue< T >::front() const
   {
     if (empty())
     {
       throw std::runtime_error("empty queue");
     }
-    return list_.back();
+    return list_.front();
   }
 
   template< class T >
@@ -96,16 +72,19 @@ namespace kondrat
   }
 
   template< class T >
-  T Queue< T >::drop()
+  void Queue< T >::push(T && rhs)
+  {
+    list_.pushBack(std::move(rhs));
+  }
+
+  template< class T >
+  void Queue< T >::pop()
   {
     if (empty())
     {
       throw std::runtime_error("empty queue");
     }
-
-    T value = list_.front();
     list_.popFront();
-    return value;
   }
 
   template< class T >

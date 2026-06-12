@@ -1,6 +1,12 @@
 #include "math-funcs.hpp"
+#include <cstddef>
+#include <limits>
+#include <stdexcept>
+#include <string>
+#include "queue.hpp"
+#include "stack.hpp"
 
-namespace kondrat
+namespace
 {
   size_t getOperatorType(const std::string & token)
   {
@@ -37,46 +43,55 @@ namespace kondrat
     return 0;
   }
 
-  Queue< std::string > tokenize(const std::string & str)
+  kondrat::Queue< std::string > tokenize(const std::string & str)
   {
-    Queue< std::string > res;
-    std::string cur_token = "";
+    kondrat::Queue< std::string > res;
+    std::string curToken = "";
     for (size_t i = 0; i < str.size(); ++i)
     {
       if (str[i] != ' ')
       {
-        cur_token += std::string(1, str[i]);
+        curToken.push_back(str[i]);
       }
-      else if (!cur_token.empty())
+      else if (!curToken.empty())
       {
-        res.push(cur_token);
-        cur_token = "";
+        res.push(curToken);
+        curToken = "";
       }
     }
-    if (!cur_token.empty())
+    if (!curToken.empty())
     {
-      res.push(cur_token);
+      res.push(curToken);
     }
     return res;
   }
 
-  Queue< std::string > infixToPostfix(Queue< std::string > & before)
+  bool shouldPopOperator(const kondrat::Stack< std::string > & stack, const std::string & token)
   {
-    Queue< std::string > postfix;
-    Stack< std::string > stackForTemp;
+    return !stack.empty()
+        && isOperator(stack.front())
+        && getPriority(stack.front()) >= getPriority(token);
+  }
+
+  kondrat::Queue< std::string > infixToPostfix(kondrat::Queue< std::string > & before)
+  {
+    kondrat::Queue< std::string > postfix;
+    kondrat::Stack< std::string > stackForTemp;
 
     while (!before.empty())
     {
-      std::string token = before.drop();
+      std::string token = before.front();
+      before.pop();
       if (token == "(")
       {
         stackForTemp.push(token);
       }
       else if (token == ")")
       {
-        while (!stackForTemp.empty() && (stackForTemp.first() != "("))
+        while (!stackForTemp.empty() && (stackForTemp.front() != "("))
         {
-          postfix.push(stackForTemp.drop());
+          postfix.push(stackForTemp.front());
+          stackForTemp.pop();
         }
 
         if (stackForTemp.empty())
@@ -84,15 +99,14 @@ namespace kondrat
           throw std::logic_error("invalid brackets");
         }
 
-        stackForTemp.drop();
+        stackForTemp.pop();
       }
       else if (isOperator(token))
       {
-        while (!stackForTemp.empty()
-              && isOperator(stackForTemp.first())
-              && getPriority(stackForTemp.first()) >= getPriority(token))
+        while (shouldPopOperator(stackForTemp, token))
         {
-          postfix.push(stackForTemp.drop());
+          postfix.push(stackForTemp.front());
+          stackForTemp.pop();
         }
         stackForTemp.push(token);
       }
@@ -104,186 +118,24 @@ namespace kondrat
 
     while (!stackForTemp.empty())
     {
-      if (stackForTemp.first() == "(" || stackForTemp.first() == ")")
+      if (stackForTemp.front() == "(" || stackForTemp.front() == ")")
       {
         throw std::logic_error("invalid brackets");
       }
-      postfix.push(stackForTemp.drop());
+      postfix.push(stackForTemp.front());
+      stackForTemp.pop();
     }
     return postfix;
   }
 
-  ll add(ll lhs, ll rhs)
+  kondrat::ll evaluatePostfix(kondrat::Queue< std::string > & postfix)
   {
-    if ((rhs > 0 && lhs > std::numeric_limits< ll >::max() - rhs)
-        || (rhs < 0 && lhs < std::numeric_limits< ll >::min() - rhs))
-    {
-      throw std::overflow_error("overflow");
-    }
-    return lhs + rhs;
-  }
-
-  ll sub(ll lhs, ll rhs)
-  {
-    if ((rhs < 0 && lhs > std::numeric_limits< ll >::max() + rhs)
-        || (rhs > 0 && lhs < std::numeric_limits< ll >::min() + rhs))
-    {
-      throw std::overflow_error("overflow");
-    }
-    return lhs - rhs;
-  }
-
-  ll mul(ll lhs, ll rhs)
-  {
-    if (lhs == 0 || rhs == 0)
-    {
-      return 0;
-    }
-
-    if (lhs == -1 && rhs == std::numeric_limits< ll >::min())
-    {
-      throw std::overflow_error("overflow");
-    }
-    if (rhs == -1 && lhs == std::numeric_limits< ll >::min())
-    {
-      throw std::overflow_error("overflow");
-    }
-
-    if (lhs > 0)
-    {
-      if (rhs > 0)
-      {
-        if (lhs > std::numeric_limits< ll >::max() / rhs)
-        {
-          throw std::overflow_error("overflow");
-        }
-      }
-      else
-      {
-        if (rhs < std::numeric_limits< ll >::min() / lhs)
-        {
-          throw std::overflow_error("overflow");
-        }
-      }
-    }
-    else
-    {
-      if (rhs > 0)
-      {
-        if (lhs < std::numeric_limits< ll >::min() / rhs)
-        {
-          throw std::overflow_error("overflow");
-        }
-      }
-      else
-      {
-        if (lhs != 0 && rhs < std::numeric_limits< ll >::max() / lhs)
-        {
-          throw std::overflow_error("overflow");
-        }
-      }
-    }
-    return lhs * rhs;
-  }
-
-  ll divide(ll lhs, ll rhs)
-  {
-    if (rhs == 0)
-    {
-      throw std::logic_error("division by zero");
-    }
-    if (lhs == std::numeric_limits< ll >::min() && rhs == -1)
-    {
-      throw std::overflow_error("overflow");
-    }
-    return lhs / rhs;
-  }
-
-  ll mod(ll lhs, ll rhs)
-  {
-    if (rhs == 0)
-    {
-      throw std::logic_error("division by zero");
-    }
-
-    ll result = lhs % rhs;
-    ll modBase = rhs < 0 ? -rhs : rhs;
-
-    if (result < 0)
-    {
-      result += modBase;
-    }
-    return result;
-  }
-
-  ll reverseNumber(ll value)
-  {
-    ll result = 0;
-
-    while (value != 0)
-    {
-      ll digit = value % 10;
-      value /= 10;
-
-      if (result > std::numeric_limits< ll >::max() / 10
-          || result < std::numeric_limits< ll >::min() / 10)
-      {
-        throw std::overflow_error("overflow");
-      }
-
-      result *= 10;
-
-      if ((digit > 0 && result > std::numeric_limits< ll >::max() - digit)
-          || (digit < 0 && result < std::numeric_limits< ll >::min() - digit))
-      {
-        throw std::overflow_error("overflow");
-      }
-      result += digit;
-    }
-    return result;
-  }
-
-  ll applyBinaryOperation(ll lhs, ll rhs, const std::string & token)
-  {
-    if (token == "+")
-    {
-      return add(lhs, rhs);
-    }
-    if (token == "-")
-    {
-      return sub(lhs, rhs);
-    }
-    if (token == "*")
-    {
-      return mul(lhs, rhs);
-    }
-    if (token == "/")
-    {
-      return divide(lhs, rhs);
-    }
-    if (token == "%")
-    {
-      return mod(lhs, rhs);
-    }
-    throw std::logic_error("unknown operator");
-  }
-
-  ll applyUnaryOperation(ll value, const std::string & token)
-  {
-    if (token == "#")
-    {
-      return reverseNumber(value);
-    }
-    throw std::logic_error("unknown operator");
-  }
-
-  ll evaluatePostfix(Queue< std::string > & postfix)
-  {
-    Stack< ll > values;
+    kondrat::Stack< kondrat::ll > values;
 
     while (!postfix.empty())
     {
-      std::string token = postfix.drop();
+      std::string token = postfix.front();
+      postfix.pop();
       size_t type = getOperatorType(token);
 
       if (type == 0)
@@ -297,10 +149,12 @@ namespace kondrat
           throw std::logic_error("invalid expression");
         }
 
-        ll rhs = values.drop();
-        ll lhs = values.drop();
+        kondrat::ll rhs = values.front();
+        values.pop();
+        kondrat::ll lhs = values.front();
+        values.pop();
 
-        values.push(applyBinaryOperation(lhs, rhs, token));
+        values.push(kondrat::applyBinaryOperation(lhs, rhs, token));
       }
       else if (type == 2)
       {
@@ -309,8 +163,9 @@ namespace kondrat
           throw std::logic_error("invalid expression");
         }
 
-        ll value = values.drop();
-        values.push(applyUnaryOperation(value, token));
+        kondrat::ll value = values.front();
+        values.pop();
+        values.push(kondrat::applyUnaryOperation(value, token));
       }
     }
 
@@ -318,39 +173,179 @@ namespace kondrat
     {
       throw std::logic_error("invalid expression");
     }
-    return values.drop();
+    kondrat::ll result = values.front();
+    values.pop();
+    return result;
+  }
+}
+
+kondrat::ll kondrat::add(ll lhs, ll rhs)
+{
+  if ((rhs > 0 && lhs > std::numeric_limits< ll >::max() - rhs)
+      || (rhs < 0 && lhs < std::numeric_limits< ll >::min() - rhs))
+  {
+    throw std::overflow_error("overflow");
+  }
+  return lhs + rhs;
+}
+
+kondrat::ll kondrat::sub(ll lhs, ll rhs)
+{
+  if ((rhs < 0 && lhs > std::numeric_limits< ll >::max() + rhs)
+      || (rhs > 0 && lhs < std::numeric_limits< ll >::min() + rhs))
+  {
+    throw std::overflow_error("overflow");
+  }
+  return lhs - rhs;
+}
+
+kondrat::ll kondrat::mul(ll lhs, ll rhs)
+{
+  if (lhs == 0 || rhs == 0)
+  {
+    return 0;
   }
 
-  void readExpressions(std::istream & in, Stack< ll > & result)
+  if (lhs == -1 && rhs == std::numeric_limits< ll >::min())
   {
-    std::string line;
+    throw std::overflow_error("overflow");
+  }
+  if (rhs == -1 && lhs == std::numeric_limits< ll >::min())
+  {
+    throw std::overflow_error("overflow");
+  }
 
-    while (std::getline(in, line))
+  if (lhs > 0)
+  {
+    if (rhs > 0)
     {
-      if (line.empty())
+      if (lhs > std::numeric_limits< ll >::max() / rhs)
       {
-        continue;
+        throw std::overflow_error("overflow");
       }
-
-      Queue< std::string > tokens = tokenize(line);
-      tokens = infixToPostfix(tokens);
-      result.push(evaluatePostfix(tokens));
+    }
+    else
+    {
+      if (rhs < std::numeric_limits< ll >::min() / lhs)
+      {
+        throw std::overflow_error("overflow");
+      }
     }
   }
-
-  void printResults(Stack < ll > & result, std::ostream & out)
+  else
   {
-    bool first = true;
-    while (!result.empty())
+    if (rhs > 0)
     {
-      if (!first)
+      if (lhs < std::numeric_limits< ll >::min() / rhs)
       {
-        out << ' ';
+        throw std::overflow_error("overflow");
       }
-
-      out << result.drop();
-      first = false;
     }
-    out << "\n";
+    else
+    {
+      if (lhs != 0 && rhs < std::numeric_limits< ll >::max() / lhs)
+      {
+        throw std::overflow_error("overflow");
+      }
+    }
   }
+  return lhs * rhs;
+}
+
+kondrat::ll kondrat::divide(ll lhs, ll rhs)
+{
+  if (rhs == 0)
+  {
+    throw std::logic_error("division by zero");
+  }
+  if (lhs == std::numeric_limits< ll >::min() && rhs == -1)
+  {
+    throw std::overflow_error("overflow");
+  }
+  return lhs / rhs;
+}
+
+kondrat::ll kondrat::mod(ll lhs, ll rhs)
+{
+  if (rhs == 0)
+  {
+    throw std::logic_error("division by zero");
+  }
+
+  ll result = lhs % rhs;
+  ll modBase = rhs < 0 ? -rhs : rhs;
+
+  if (result < 0)
+  {
+    result += modBase;
+  }
+  return result;
+}
+
+kondrat::ll kondrat::reverseNumber(ll value)
+{
+  ll result = 0;
+
+  while (value != 0)
+  {
+    ll digit = value % 10;
+    value /= 10;
+
+    if (result > std::numeric_limits< ll >::max() / 10
+        || result < std::numeric_limits< ll >::min() / 10)
+    {
+      throw std::overflow_error("overflow");
+    }
+
+    result *= 10;
+
+    if ((digit > 0 && result > std::numeric_limits< ll >::max() - digit)
+        || (digit < 0 && result < std::numeric_limits< ll >::min() - digit))
+    {
+      throw std::overflow_error("overflow");
+    }
+    result += digit;
+  }
+  return result;
+}
+
+kondrat::ll kondrat::applyBinaryOperation(ll lhs, ll rhs, const std::string & token)
+{
+  if (token == "+")
+  {
+    return add(lhs, rhs);
+  }
+  if (token == "-")
+  {
+    return sub(lhs, rhs);
+  }
+  if (token == "*")
+  {
+    return mul(lhs, rhs);
+  }
+  if (token == "/")
+  {
+    return divide(lhs, rhs);
+  }
+  if (token == "%")
+  {
+    return mod(lhs, rhs);
+  }
+  throw std::logic_error("unknown operator");
+}
+
+kondrat::ll kondrat::applyUnaryOperation(ll value, const std::string & token)
+{
+  if (token == "#")
+  {
+    return reverseNumber(value);
+  }
+  throw std::logic_error("unknown operator");
+}
+
+kondrat::ll kondrat::calculateExpression(const std::string & str)
+{
+  Queue< std::string > tokens = tokenize(str);
+  tokens = infixToPostfix(tokens);
+  return evaluatePostfix(tokens);
 }
