@@ -6,9 +6,9 @@ namespace kondrat
   template< class Key, class Value >
   struct CuckooHashNode
   {
-    Key key;
-    Value value;
-    bool occupied;
+    Key key_;
+    Value value_;
+    bool occupied_;
 
     CuckooHashNode();
     CuckooHashNode(const Key & k, const Value & v);
@@ -16,16 +16,16 @@ namespace kondrat
 
   template< class Key, class Value >
   CuckooHashNode< Key, Value >::CuckooHashNode():
-    key(),
-    value(),
-    occupied(false)
+    key_(),
+    value_(),
+    occupied_(false)
   {}
 
   template< class Key, class Value >
   CuckooHashNode< Key, Value >::CuckooHashNode(const Key & k, const Value & v):
-    key(k),
-    value(v),
-    occupied(true)
+    key_(k),
+    value_(v),
+    occupied_(true)
   {}
 }
 
