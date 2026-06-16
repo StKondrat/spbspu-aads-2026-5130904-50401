@@ -63,6 +63,7 @@ namespace kondrat
 
       static const size_t minSubtableCapacity_ = 8;
       static const size_t maxLoadFactorMultiplier_ = 2;
+      static const size_t maxRehashCount_ = 32;
 
       topit::Vector< Node > firstTable_;
       topit::Vector< Node > secondTable_;
@@ -74,11 +75,12 @@ namespace kondrat
       size_t firstIndex(const Key & key) const;
       size_t secondIndex(const Key & key) const;
       size_t subtableCapacity() const noexcept;
+      size_t normalizedSubtableCapacity(size_t capacity) const;
 
       Node * findNode(const Key & key);
       const Node * findNode(const Key & key) const;
 
-      void placeWithoutRehash(const Node & node);
+      bool placeWithoutRehash(const Node & node);
       void rehashAndPlace(const Node & node);
   };
 
@@ -95,42 +97,43 @@ namespace kondrat
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::CuckooHashTable(size_t capacity):
-    firstTable_(capacity / 2 < minSubtableCapacity_ ? minSubtableCapacity_ : capacity / 2, Node()),
-    secondTable_(capacity / 2 < minSubtableCapacity_ ? minSubtableCapacity_ : capacity / 2, Node()),
+    firstTable_(normalizedSubtableCapacity(capacity), Node()),
+    secondTable_(normalizedSubtableCapacity(capacity), Node()),
     size_(0),
     primaryHash_(),
     secondaryHash_(),
     equal_()
-  {
-    if (capacity == 0)
-    {
-      throw std::logic_error("invalid capacity");
-    }
-  }
+  {}
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   void CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::add(const Key & key, const Value & value)
   {
-    Node * existing = findNode(key);
+    CuckooHashTable copy(*this);
+
+    Node * existing = copy.findNode(key);
     if (existing != nullptr)
     {
       existing->value_ = value;
-      return;
     }
-
-    if ((size_ + 1) * maxLoadFactorMultiplier_ > capacity())
+    else
     {
-      rehash(capacity() * maxLoadFactorMultiplier_);
+      if ((copy.size_ + 1) * maxLoadFactorMultiplier_ > copy.capacity())
+      {
+        copy.rehash(copy.capacity() * maxLoadFactorMultiplier_);
+      }
+
+      copy.rehashAndPlace(Node(key, value));
+      ++copy.size_;
     }
 
-    rehashAndPlace(Node(key, value));
-    ++size_;
+    swap(copy);
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   Value CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::drop(const Key & key)
   {
-    Node * node = findNode(key);
+    CuckooHashTable copy(*this);
+    Node * node = copy.findNode(key);
     if (node == nullptr)
     {
       throw std::logic_error("key not found");
@@ -138,7 +141,9 @@ namespace kondrat
 
     Value value = node->value_;
     *node = Node();
-    --size_;
+    --copy.size_;
+
+    swap(copy);
     return value;
   }
 
@@ -175,13 +180,16 @@ namespace kondrat
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   void CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::clear()
   {
-    for (size_t i = 0; i < firstTable_.getSize(); ++i)
-    {
-      firstTable_[i] = Node();
-      secondTable_[i] = Node();
-    }
+    CuckooHashTable copy(*this);
 
-    size_ = 0;
+    for (size_t i = 0; i < copy.firstTable_.getSize(); ++i)
+    {
+      copy.firstTable_[i] = Node();
+      copy.secondTable_[i] = Node();
+    }
+    copy.size_ = 0;
+
+    swap(copy);
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
@@ -208,9 +216,6 @@ namespace kondrat
     firstTable_.swap(other.firstTable_);
     secondTable_.swap(other.secondTable_);
     std::swap(size_, other.size_);
-    std::swap(primaryHash_, other.primaryHash_);
-    std::swap(secondaryHash_, other.secondaryHash_);
-    std::swap(equal_, other.equal_);
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
@@ -292,6 +297,19 @@ namespace kondrat
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
+  size_t CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::normalizedSubtableCapacity(size_t capacity) const
+  {
+    if (capacity == 0)
+    {
+      throw std::logic_error("invalid capacity");
+    }
+
+    const size_t halfCapacity = (capacity + 1) / 2;
+
+    return halfCapacity < minSubtableCapacity_ ? minSubtableCapacity_ : halfCapacity;
+  }
+
+  template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   typename CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::Node *
   CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::findNode(const Key & key)
   {
@@ -330,8 +348,10 @@ namespace kondrat
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  void CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::placeWithoutRehash(const Node & node)
+  bool CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::placeWithoutRehash(const Node & node)
   {
+    topit::Vector< Node > firstBackup = firstTable_;
+    topit::Vector< Node > secondBackup = secondTable_;
     Node current = node;
     size_t tableIndex = 0;
     const size_t maxKickCount = capacity();
@@ -344,14 +364,16 @@ namespace kondrat
       if (!table[position].occupied_)
       {
         table[position] = current;
-        return;
+        return true;
       }
 
       std::swap(current, table[position]);
       tableIndex = 1 - tableIndex;
     }
 
-    throw std::logic_error("cuckoo cycle");
+    firstTable_.swap(firstBackup);
+    secondTable_.swap(secondBackup);
+    return false;
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
@@ -359,19 +381,18 @@ namespace kondrat
   {
     size_t newCapacity = capacity();
 
-    while (true)
+    for (size_t rehashCount = 0; rehashCount < maxRehashCount_; ++rehashCount)
     {
-      try
+      if (placeWithoutRehash(node))
       {
-        placeWithoutRehash(node);
         return;
       }
-      catch (const std::logic_error &)
-      {
-        newCapacity *= maxLoadFactorMultiplier_;
-        rehash(newCapacity);
-      }
+
+      newCapacity *= maxLoadFactorMultiplier_;
+      rehash(newCapacity);
     }
+
+    throw std::logic_error("rehash limit exceeded");
   }
 }
 
