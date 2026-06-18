@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <vector/top-it-vector.hpp>
 
 namespace kondrat
 {

@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <vector/top-it-vector.hpp>
 
 namespace kondrat
 {
@@ -95,7 +96,9 @@ namespace kondrat
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   bool HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator==(const HashConstIter & other) const
   {
-    return table_ == other.table_ && tableIndex_ == other.tableIndex_ && nodeIndex_ == other.nodeIndex_;
+    return table_ == other.table_
+      && tableIndex_ == other.tableIndex_
+      && nodeIndex_ == other.nodeIndex_;
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >

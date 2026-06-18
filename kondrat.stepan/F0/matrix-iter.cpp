@@ -1,5 +1,5 @@
-#include <memory>
 #include "matrix-iter.hpp"
+#include <memory>
 #include "matrix.hpp"
 
 kondrat::MatrixIter::MatrixIter():

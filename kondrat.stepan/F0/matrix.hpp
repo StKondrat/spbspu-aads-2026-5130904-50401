@@ -39,6 +39,7 @@ namespace kondrat
       using DiagConstIterator = MatrixDiagConstIter;
 
       Matrix();
+      Matrix(const Matrix & rhs) = default;
       Matrix(size_t rows, size_t cols);
 
       Matrix & operator=(const Matrix & rhs);
