@@ -1,126 +1,483 @@
+#include "matrix-table.hpp"
+#include <fstream>
 #include <istream>
 #include <ostream>
 #include <stdexcept>
 #include <vector/top-it-vector.hpp>
-#include "matrix-table.hpp"
 
-namespace kondrat
+namespace
 {
-  namespace
+  template< class T >
+  void sortVector(topit::Vector< T > & values)
   {
-    template< class T >
-    void sortVector(topit::Vector< T > & values)
+    for (size_t i = 0; i < values.getSize(); ++i)
     {
-      for (size_t i = 0; i < values.getSize(); ++i)
+      for (size_t j = i + 1; j < values.getSize(); ++j)
       {
-        for (size_t j = i + 1; j < values.getSize(); ++j)
+        if (values[j] < values[i])
         {
-          if (values[j] < values[i])
-          {
-            T tmp = values[i];
-            values[i] = values[j];
-            values[j] = tmp;
-          }
+          T tmp = values[i];
+          values[i] = values[j];
+          values[j] = tmp;
         }
       }
     }
   }
 
-  void MatrixTable::create(std::istream & in, std::ostream &, std::string matrixName)
+  size_t readIndex(std::istream & in)
   {
-    size_t rows = 0;
-    size_t cols = 0;
-
-    if (!(in >> rows >> cols) || hasExtraArgs(in) || matrices_.has(matrixName))
+    long long value = 0;
+    if (!(in >> value) || value < 0)
     {
-      throw std::logic_error("invalid command");
+      throw std::logic_error("invalid index");
     }
-
-    matrices_.add(matrixName, Matrix(rows, cols));
+    return static_cast< size_t >(value);
   }
 
-  void MatrixTable::drop(std::istream & in, std::ostream &, std::string matrixName)
+  size_t readMatrixCount(std::istream & in)
   {
-    if (hasExtraArgs(in))
+    const size_t count = readIndex(in);
+    if (count < 2)
     {
-      throw std::logic_error("invalid command");
+      throw std::logic_error("invalid matrix count");
     }
-
-    matrices_.drop(matrixName);
+    return count;
   }
 
-  void MatrixTable::show(std::istream & in, std::ostream & out, std::string matrixName)
+  template< class Storage >
+  topit::Vector< kondrat::Matrix > readMatrices(std::istream & in, const Storage & storage, size_t count)
   {
-    if (hasExtraArgs(in))
+    topit::Vector< kondrat::Matrix > matrices;
+    for (size_t i = 0; i < count; ++i)
     {
-      throw std::logic_error("invalid command");
+      std::string name;
+      if (!(in >> name))
+      {
+        throw std::logic_error("invalid command");
+      }
+      matrices.pushBack(storage.get(name));
     }
+    return matrices;
+  }
+}
 
-    out << matrixName << ":\n" << matrices_.get(matrixName) << '\n';
+void kondrat::MatrixTable::create(std::istream & in, std::ostream &, std::string matrixName)
+{
+  const size_t rows = readIndex(in);
+  const size_t cols = readIndex(in);
+  if (rows == 0 || cols == 0 || hasExtraArgs(in) || matrices_.has(matrixName))
+  {
+    throw std::logic_error("invalid command");
+  }
+  matrices_.add(matrixName, Matrix(rows, cols));
+}
+
+void kondrat::MatrixTable::drop(std::istream & in, std::ostream &, std::string matrixName)
+{
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  matrices_.drop(matrixName);
+}
+
+void kondrat::MatrixTable::show(std::istream & in, std::ostream & out, std::string matrixName)
+{
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  const Matrix & matrix = matrices_.get(matrixName);
+  out << matrixName << ":\n" << matrix << '\n';
+}
+
+void kondrat::MatrixTable::list(std::istream & in, std::ostream & out, std::string)
+{
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  if (matrices_.empty())
+  {
+    out << "<EMPTY>\n";
+    return;
   }
 
-  void MatrixTable::list(std::istream & in, std::ostream & out, std::string)
+  topit::Vector< std::string > names;
+  for (Storage::ConstIterator it = matrices_.cbegin(); it != matrices_.cend(); ++it)
   {
-    if (hasExtraArgs(in))
-    {
-      throw std::logic_error("invalid command");
-    }
+    names.pushBack(it->key_);
+  }
+  sortVector(names);
 
-    if (matrices_.empty())
-    {
-      out << "<EMPTY>\n";
-      return;
-    }
+  for (size_t i = 0; i < names.getSize(); ++i)
+  {
+    const Matrix & matrix = matrices_.get(names[i]);
+    out << names[i] << ' ' << matrix.rows() << 'x' << matrix.cols() << '\n';
+  }
+}
 
-    topit::Vector< std::string > names;
-    for (Storage::ConstIterator it = matrices_.cbegin(); it != matrices_.cend(); ++it)
-    {
-      names.pushBack(it->key_);
-    }
-
-    sortVector(names);
-
-    for (size_t i = 0; i < names.getSize(); ++i)
-    {
-      const Matrix & matrix = matrices_.get(names[i]);
-      out << names[i] << ' ' << matrix.rows() << 'x' << matrix.cols() << '\n';
-    }
+void kondrat::MatrixTable::rename(std::istream & in, std::ostream &, std::string matrixName)
+{
+  std::string newName;
+  if (!(in >> newName) || hasExtraArgs(in) || matrices_.has(newName))
+  {
+    throw std::logic_error("invalid command");
   }
 
-  void MatrixTable::rename(std::istream & in, std::ostream &, std::string matrixName)
-  {
-    std::string newName;
+  Storage copy(matrices_);
+  const Matrix matrix = copy.drop(matrixName);
+  copy.add(newName, matrix);
+  matrices_.swap(copy);
+}
 
-    if (!(in >> newName) || hasExtraArgs(in) || matrices_.has(newName))
+void kondrat::MatrixTable::set(std::istream & in, std::ostream &, std::string matrixName)
+{
+  const size_t row = readIndex(in);
+  const size_t col = readIndex(in);
+  ll value = 0;
+  if (!(in >> value) || hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  Matrix matrix = matrices_.get(matrixName);
+  matrix.at(row, col) = value;
+  matrices_.add(matrixName, matrix);
+}
+
+void kondrat::MatrixTable::addMany(std::istream & in, std::ostream &, std::string matrixName)
+{
+  if (matrices_.has(matrixName))
+  {
+    throw std::logic_error("name is occupied");
+  }
+
+  const size_t count = readMatrixCount(in);
+  const topit::Vector< Matrix > matrices = readMatrices(in, matrices_, count);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  Matrix result = matrices[0];
+  for (size_t i = 1; i < matrices.getSize(); ++i)
+  {
+    result = result + matrices[i];
+  }
+  matrices_.add(matrixName, result);
+}
+
+void kondrat::MatrixTable::subMany(std::istream & in, std::ostream &, std::string matrixName)
+{
+  if (matrices_.has(matrixName))
+  {
+    throw std::logic_error("name is occupied");
+  }
+
+  const size_t count = readMatrixCount(in);
+  const topit::Vector< Matrix > matrices = readMatrices(in, matrices_, count);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  Matrix result = matrices[0];
+  for (size_t i = 1; i < matrices.getSize(); ++i)
+  {
+    result = result - matrices[i];
+  }
+  matrices_.add(matrixName, result);
+}
+
+void kondrat::MatrixTable::mulMany(std::istream & in, std::ostream &, std::string matrixName)
+{
+  if (matrices_.has(matrixName))
+  {
+    throw std::logic_error("name is occupied");
+  }
+
+  const size_t count = readMatrixCount(in);
+  const topit::Vector< Matrix > matrices = readMatrices(in, matrices_, count);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  Matrix result = matrices[0];
+  for (size_t i = 1; i < matrices.getSize(); ++i)
+  {
+    result = result * matrices[i];
+  }
+  matrices_.add(matrixName, result);
+}
+
+void kondrat::MatrixTable::mulNumber(std::istream & in, std::ostream &, std::string matrixName)
+{
+  std::string sourceName;
+  ll number = 0;
+  if (!(in >> sourceName >> number) || hasExtraArgs(in) || matrices_.has(matrixName))
+  {
+    throw std::logic_error("invalid command");
+  }
+  matrices_.add(matrixName, matrices_.get(sourceName) * number);
+}
+
+void kondrat::MatrixTable::pow(std::istream & in, std::ostream &, std::string matrixName)
+{
+  std::string sourceName;
+  if (!(in >> sourceName) || matrices_.has(matrixName))
+  {
+    throw std::logic_error("invalid command");
+  }
+  const size_t degree = readIndex(in);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  matrices_.add(matrixName, matrices_.get(sourceName).getPower(degree));
+}
+
+void kondrat::MatrixTable::insertRow(std::istream & in, std::ostream &, std::string matrixName)
+{
+  std::string targetName;
+  if (!(in >> targetName) || matrices_.has(matrixName))
+  {
+    throw std::logic_error("invalid command");
+  }
+  const size_t targetRow = readIndex(in);
+  std::string sourceName;
+  if (!(in >> sourceName))
+  {
+    throw std::logic_error("invalid command");
+  }
+  const size_t sourceRow = readIndex(in);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  const Matrix result = matrices_.get(targetName).getInsertedRow(targetRow, matrices_.get(sourceName), sourceRow);
+  matrices_.add(matrixName, result);
+}
+
+void kondrat::MatrixTable::insertCol(std::istream & in, std::ostream &, std::string matrixName)
+{
+  std::string targetName;
+  if (!(in >> targetName) || matrices_.has(matrixName))
+  {
+    throw std::logic_error("invalid command");
+  }
+  const size_t targetCol = readIndex(in);
+  std::string sourceName;
+  if (!(in >> sourceName))
+  {
+    throw std::logic_error("invalid command");
+  }
+  const size_t sourceCol = readIndex(in);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  const Matrix result = matrices_.get(targetName).getInsertedCol(targetCol, matrices_.get(sourceName), sourceCol);
+  matrices_.add(matrixName, result);
+}
+
+void kondrat::MatrixTable::insert(std::istream & in, std::ostream &, std::string matrixName)
+{
+  std::string targetName;
+  std::string sourceName;
+  if (!(in >> targetName >> sourceName) || matrices_.has(matrixName))
+  {
+    throw std::logic_error("invalid command");
+  }
+  const size_t startRow = readIndex(in);
+  const size_t startCol = readIndex(in);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  const Matrix result = matrices_.get(targetName).getInserted(matrices_.get(sourceName), startRow, startCol);
+  matrices_.add(matrixName, result);
+}
+
+void kondrat::MatrixTable::concatRow(std::istream & in, std::ostream &, std::string matrixName)
+{
+  if (matrices_.has(matrixName))
+  {
+    throw std::logic_error("name is occupied");
+  }
+  const size_t count = readMatrixCount(in);
+  const topit::Vector< Matrix > matrices = readMatrices(in, matrices_, count);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  matrices_.add(matrixName, concatRows(matrices));
+}
+
+void kondrat::MatrixTable::concatCol(std::istream & in, std::ostream &, std::string matrixName)
+{
+  if (matrices_.has(matrixName))
+  {
+    throw std::logic_error("name is occupied");
+  }
+  const size_t count = readMatrixCount(in);
+  const topit::Vector< Matrix > matrices = readMatrices(in, matrices_, count);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  matrices_.add(matrixName, concatCols(matrices));
+}
+
+void kondrat::MatrixTable::concatMainDiag(std::istream & in, std::ostream &, std::string matrixName)
+{
+  if (matrices_.has(matrixName))
+  {
+    throw std::logic_error("name is occupied");
+  }
+  const size_t count = readMatrixCount(in);
+  const topit::Vector< Matrix > matrices = readMatrices(in, matrices_, count);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  matrices_.add(matrixName, kondrat::concatMainDiag(matrices));
+}
+
+void kondrat::MatrixTable::concatSideDiag(std::istream & in, std::ostream &, std::string matrixName)
+{
+  if (matrices_.has(matrixName))
+  {
+    throw std::logic_error("name is occupied");
+  }
+  const size_t count = readMatrixCount(in);
+  const topit::Vector< Matrix > matrices = readMatrices(in, matrices_, count);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  matrices_.add(matrixName, kondrat::concatSideDiag(matrices));
+}
+
+void kondrat::MatrixTable::minor(std::istream & in, std::ostream &, std::string matrixName)
+{
+  std::string sourceName;
+  if (!(in >> sourceName) || matrices_.has(matrixName))
+  {
+    throw std::logic_error("invalid command");
+  }
+  const size_t row = readIndex(in);
+  const size_t col = readIndex(in);
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  matrices_.add(matrixName, matrices_.get(sourceName).getMinor(row, col));
+}
+
+void kondrat::MatrixTable::det(std::istream & in, std::ostream & out, std::string matrixName)
+{
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  out << matrices_.get(matrixName).getDeterminant() << '\n';
+}
+
+void kondrat::MatrixTable::rank(std::istream & in, std::ostream & out, std::string matrixName)
+{
+  if (hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+  out << matrices_.get(matrixName).getRank() << '\n';
+}
+
+void kondrat::MatrixTable::compare(std::istream & in, std::ostream & out, std::string matrixName)
+{
+  std::string secondName;
+  if (!(in >> secondName) || hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  if (matrices_.get(matrixName) == matrices_.get(secondName))
+  {
+    out << "<EQUAL>\n";
+  }
+  else
+  {
+    out << "<NOT EQUAL>\n";
+  }
+}
+
+void kondrat::MatrixTable::saveMatrix(std::istream & in, std::ostream & out, std::string matrixName)
+{
+  std::string fileName;
+  if (!(in >> fileName) || hasExtraArgs(in))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  const Matrix & matrix = matrices_.get(matrixName);
+  std::ofstream file(fileName);
+  if (!file)
+  {
+    throw std::runtime_error("cannot open file");
+  }
+
+  file << matrix.rows() << ' ' << matrix.cols() << '\n';
+  file << matrix << '\n';
+  if (!file)
+  {
+    throw std::runtime_error("cannot write file");
+  }
+  out << "<OK>\n";
+}
+
+void kondrat::MatrixTable::loadMatrix(std::istream & in, std::ostream &, std::string matrixName)
+{
+  std::string fileName;
+  if (!(in >> fileName) || hasExtraArgs(in) || matrices_.has(matrixName))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  std::ifstream file(fileName);
+  if (!file)
+  {
+    throw std::runtime_error("cannot open file");
+  }
+
+  const size_t rows = readIndex(file);
+  const size_t cols = readIndex(file);
+  if (rows == 0 || cols == 0)
+  {
+    throw std::logic_error("invalid matrix file");
+  }
+
+  Matrix matrix(rows, cols);
+  for (Matrix::Iterator it = matrix.begin(); it != matrix.end(); ++it)
+  {
+    if (!(file >> *it))
     {
-      throw std::logic_error("invalid command");
+      throw std::logic_error("invalid matrix file");
     }
-
-    Storage copy(matrices_);
-    Matrix matrix = copy.drop(matrixName);
-    copy.add(newName, matrix);
-    matrices_.swap(copy);
   }
-
-  void MatrixTable::set(std::istream & in, std::ostream &, std::string matrixName)
+  std::string extra;
+  if (file >> extra)
   {
-    size_t row = 0;
-    size_t col = 0;
-    ll value = 0;
-
-    if (!(in >> row >> col >> value) || hasExtraArgs(in))
-    {
-      throw std::logic_error("invalid command");
-    }
-
-    Matrix matrix = matrices_.get(matrixName);
-    matrix.at(row, col) = value;
-    matrices_.add(matrixName, matrix);
+    throw std::logic_error("invalid matrix file");
   }
+  matrices_.add(matrixName, matrix);
+}
 
-  bool MatrixTable::hasExtraArgs(std::istream & in) const
-  {
-    std::string extra;
-    return static_cast< bool >(in >> extra);
-  }
+bool kondrat::MatrixTable::hasExtraArgs(std::istream & in) const
+{
+  std::string extra;
+  return static_cast< bool >(in >> extra);
 }
