@@ -2,6 +2,7 @@
 #define CUCKOO_HASH_TABLE_HPP
 
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <utility>
 #include <vector/top-it-vector.hpp>
@@ -34,6 +35,9 @@ namespace kondrat
 
       CuckooHashTable();
       explicit CuckooHashTable(size_t capacity);
+      CuckooHashTable(const CuckooHashTable & other) = default;
+
+      CuckooHashTable & operator=(const CuckooHashTable & other);
 
       void add(const Key & key, const Value & value);
       Value drop(const Key & key);
@@ -104,6 +108,20 @@ namespace kondrat
     secondaryHash_(),
     equal_()
   {}
+
+  template< class Key, class Value, class PrimHash, class SecHash, class Equal >
+  CuckooHashTable< Key, Value, PrimHash, SecHash, Equal > &
+  CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::operator=(
+    const CuckooHashTable & other)
+  {
+    if (this != std::addressof(other))
+    {
+      CuckooHashTable copy(other);
+      swap(copy);
+    }
+
+    return *this;
+  }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   void CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::add(const Key & key, const Value & value)
@@ -216,6 +234,9 @@ namespace kondrat
     firstTable_.swap(other.firstTable_);
     secondTable_.swap(other.secondTable_);
     std::swap(size_, other.size_);
+    std::swap(primaryHash_, other.primaryHash_);
+    std::swap(secondaryHash_, other.secondaryHash_);
+    std::swap(equal_, other.equal_);
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
