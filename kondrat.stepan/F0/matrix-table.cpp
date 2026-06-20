@@ -478,6 +478,19 @@ void kondrat::MatrixTable::loadMatrix(std::istream & in, std::ostream &, std::st
 
 bool kondrat::MatrixTable::hasExtraArgs(std::istream & in) const
 {
-  std::string extra;
-  return static_cast< bool >(in >> extra);
+  while (in)
+  {
+    const int next = in.peek();
+    if (next == '\n' || next == std::char_traits< char >::eof())
+    {
+      return false;
+    }
+
+    const int symbol = in.get();
+    if (symbol != ' ' && symbol != '\t' && symbol != '\r')
+    {
+      return true;
+    }
+  }
+  return false;
 }
