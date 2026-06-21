@@ -39,10 +39,17 @@ namespace kondrat
       using DiagConstIterator = MatrixDiagConstIter;
 
       Matrix();
-      Matrix(const Matrix & rhs) = default;
+      Matrix(const Matrix & rhs);
       Matrix(size_t rows, size_t cols);
 
       Matrix & operator=(const Matrix & rhs);
+      Matrix operator+(const Matrix & rhs) const;
+      Matrix operator-(const Matrix & rhs) const;
+      Matrix operator*(const Matrix & rhs) const;
+      Matrix operator*(ll number) const;
+      bool operator==(const Matrix & rhs) const;
+      bool operator!=(const Matrix & rhs) const;
+
       size_t rows() const noexcept;
       size_t cols() const noexcept;
 
@@ -75,13 +82,6 @@ namespace kondrat
       DiagIterator sideDiagEnd() noexcept;
       DiagConstIterator sideDiagBegin() const noexcept;
       DiagConstIterator sideDiagEnd() const noexcept;
-
-      Matrix operator+(const Matrix & rhs) const;
-      Matrix operator-(const Matrix & rhs) const;
-      Matrix operator*(const Matrix & rhs) const;
-      Matrix operator*(ll number) const;
-      bool operator==(const Matrix & rhs) const;
-      bool operator!=(const Matrix & rhs) const;
 
       Matrix getPower(size_t degree) const;
       Matrix getInsertedRow(size_t targetRow, const Matrix & source, size_t sourceRow) const;

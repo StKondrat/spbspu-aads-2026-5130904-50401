@@ -14,11 +14,9 @@ namespace kondrat
   class HashIter
   {
     public:
-      using table_type = CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >;
-      using Node = typename table_type::Node;
+      using Node = typename CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::Node;
 
       HashIter();
-      HashIter(table_type * table, size_t tableIndex, size_t nodeIndex);
 
       Node & operator*() const;
       Node * operator->() const;
@@ -30,10 +28,15 @@ namespace kondrat
       bool operator!=(const HashIter & other) const;
 
     private:
-      table_type * table_;
+      friend class CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >;
+
+      using Table = CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >;
+
+      Table * table_;
       size_t tableIndex_;
       size_t nodeIndex_;
 
+      HashIter(Table * table, size_t tableIndex, size_t nodeIndex);
       void advance();
   };
 
@@ -46,7 +49,7 @@ namespace kondrat
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   HashIter< Key, Value, PrimHash, SecHash, Equal >::HashIter(
-    table_type * table,
+    Table * table,
     size_t tableIndex,
     size_t nodeIndex):
     table_(table),
@@ -64,7 +67,6 @@ namespace kondrat
     {
       return table_->firstTable_[nodeIndex_];
     }
-
     return table_->secondTable_[nodeIndex_];
   }
 
@@ -96,7 +98,9 @@ namespace kondrat
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   bool HashIter< Key, Value, PrimHash, SecHash, Equal >::operator==(const HashIter & other) const
   {
-    return table_ == other.table_ && tableIndex_ == other.tableIndex_ && nodeIndex_ == other.nodeIndex_;
+    return table_ == other.table_
+      && tableIndex_ == other.tableIndex_
+      && nodeIndex_ == other.nodeIndex_;
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
@@ -115,18 +119,16 @@ namespace kondrat
 
     while (tableIndex_ < 2)
     {
-      topit::Vector< Node > & table = tableIndex_ == 0 ? table_->firstTable_ : table_->secondTable_;
-
+      const topit::Vector< Node > & table =
+        tableIndex_ == 0 ? table_->firstTable_ : table_->secondTable_;
       while (nodeIndex_ < table.getSize())
       {
         if (table[nodeIndex_].occupied_)
         {
           return;
         }
-
         ++nodeIndex_;
       }
-
       ++tableIndex_;
       nodeIndex_ = 0;
     }

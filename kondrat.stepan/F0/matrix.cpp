@@ -5,82 +5,94 @@
 #include <stdexcept>
 #include <utility>
 
-namespace
+namespace kondrat
 {
-  size_t getMatrixSize(size_t rows, size_t cols)
-  {
-    if (rows == 0 || cols == 0)
-    {
-      throw std::logic_error("invalid matrix size");
-    }
-    if (rows > std::numeric_limits< size_t >::max() / cols)
-    {
-      throw std::overflow_error("matrix size overflow");
-    }
-    return rows * cols;
-  }
+  static size_t getMatrixSize(size_t rows, size_t cols);
+  static size_t addSizes(size_t lhs, size_t rhs);
+  static ll addValues(ll lhs, ll rhs);
+  static ll subValues(ll lhs, ll rhs);
+  static ll mulValues(ll lhs, ll rhs);
+}
 
-  size_t addSizes(size_t lhs, size_t rhs)
+size_t kondrat::getMatrixSize(size_t rows, size_t cols)
+{
+  if (rows == 0 || cols == 0)
   {
-    if (lhs > std::numeric_limits< size_t >::max() - rhs)
-    {
-      throw std::overflow_error("matrix size overflow");
-    }
-    return lhs + rhs;
+    throw std::logic_error("invalid matrix size");
   }
-
-  kondrat::ll addValues(kondrat::ll lhs, kondrat::ll rhs)
+  if (rows > std::numeric_limits< size_t >::max() / cols)
   {
-    if ((rhs > 0 && lhs > std::numeric_limits< kondrat::ll >::max() - rhs)
-        || (rhs < 0 && lhs < std::numeric_limits< kondrat::ll >::min() - rhs))
+    throw std::overflow_error("matrix size overflow");
+  }
+  return rows * cols;
+}
+
+size_t kondrat::addSizes(size_t lhs, size_t rhs)
+{
+  if (lhs > std::numeric_limits< size_t >::max() - rhs)
+  {
+    throw std::overflow_error("matrix size overflow");
+  }
+  return lhs + rhs;
+}
+
+kondrat::ll kondrat::addValues(ll lhs, ll rhs)
+{
+  if ((rhs > 0 && lhs > std::numeric_limits< ll >::max() - rhs)
+      || (rhs < 0 && lhs < std::numeric_limits< ll >::min() - rhs))
+  {
+    throw std::overflow_error("matrix value overflow");
+  }
+  return lhs + rhs;
+}
+
+kondrat::ll kondrat::subValues(ll lhs, ll rhs)
+{
+  if ((rhs < 0 && lhs > std::numeric_limits< ll >::max() + rhs)
+      || (rhs > 0 && lhs < std::numeric_limits< ll >::min() + rhs))
+  {
+    throw std::overflow_error("matrix value overflow");
+  }
+  return lhs - rhs;
+}
+
+kondrat::ll kondrat::mulValues(ll lhs, ll rhs)
+{
+  if (lhs == 0 || rhs == 0)
+  {
+    return 0;
+  }
+  if ((lhs == -1 && rhs == std::numeric_limits< ll >::min())
+      || (rhs == -1 && lhs == std::numeric_limits< ll >::min()))
+  {
+    throw std::overflow_error("matrix value overflow");
+  }
+  if (lhs > 0)
+  {
+    if ((rhs > 0 && lhs > std::numeric_limits< ll >::max() / rhs)
+        || (rhs < 0 && rhs < std::numeric_limits< ll >::min() / lhs))
     {
       throw std::overflow_error("matrix value overflow");
     }
-    return lhs + rhs;
   }
-
-  kondrat::ll subValues(kondrat::ll lhs, kondrat::ll rhs)
+  else if ((rhs > 0 && lhs < std::numeric_limits< ll >::min() / rhs)
+      || (rhs < 0 && lhs < std::numeric_limits< ll >::max() / rhs))
   {
-    if ((rhs < 0 && lhs > std::numeric_limits< kondrat::ll >::max() + rhs)
-        || (rhs > 0 && lhs < std::numeric_limits< kondrat::ll >::min() + rhs))
-    {
-      throw std::overflow_error("matrix value overflow");
-    }
-    return lhs - rhs;
+    throw std::overflow_error("matrix value overflow");
   }
-
-  kondrat::ll mulValues(kondrat::ll lhs, kondrat::ll rhs)
-  {
-    if (lhs == 0 || rhs == 0)
-    {
-      return 0;
-    }
-    if ((lhs == -1 && rhs == std::numeric_limits< kondrat::ll >::min())
-        || (rhs == -1 && lhs == std::numeric_limits< kondrat::ll >::min()))
-    {
-      throw std::overflow_error("matrix value overflow");
-    }
-    if (lhs > 0)
-    {
-      if ((rhs > 0 && lhs > std::numeric_limits< kondrat::ll >::max() / rhs)
-          || (rhs < 0 && rhs < std::numeric_limits< kondrat::ll >::min() / lhs))
-      {
-        throw std::overflow_error("matrix value overflow");
-      }
-    }
-    else if ((rhs > 0 && lhs < std::numeric_limits< kondrat::ll >::min() / rhs)
-        || (rhs < 0 && lhs < std::numeric_limits< kondrat::ll >::max() / rhs))
-    {
-      throw std::overflow_error("matrix value overflow");
-    }
-    return lhs * rhs;
-  }
+  return lhs * rhs;
 }
 
 kondrat::Matrix::Matrix():
   rows_(0),
   cols_(0),
   data_()
+{}
+
+kondrat::Matrix::Matrix(const Matrix & rhs):
+  rows_(rhs.rows_),
+  cols_(rhs.cols_),
+  data_(rhs.data_)
 {}
 
 kondrat::Matrix::Matrix(size_t rows, size_t cols):
@@ -411,7 +423,7 @@ kondrat::Matrix kondrat::Matrix::getInsertedRow(size_t targetRow, const Matrix &
   for (size_t i = 0; i < result.rows_; ++i)
   {
     RowIterator resultIt = result.rowBegin(i);
-    RowIterator resultEnd = result.rowEnd(i);
+    const RowIterator resultEnd = result.rowEnd(i);
 
     if (i == targetRow)
     {
@@ -448,7 +460,7 @@ kondrat::Matrix kondrat::Matrix::getInsertedCol(size_t targetCol, const Matrix &
   for (size_t j = 0; j < result.cols_; ++j)
   {
     ColIterator resultIt = result.colBegin(j);
-    ColIterator resultEnd = result.colEnd(j);
+    const ColIterator resultEnd = result.colEnd(j);
 
     if (j == targetCol)
     {

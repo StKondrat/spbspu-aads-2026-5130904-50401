@@ -14,11 +14,9 @@ namespace kondrat
   class HashConstIter
   {
     public:
-      using table_type = CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >;
-      using Node = typename table_type::Node;
+      using Node = typename CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::Node;
 
       HashConstIter();
-      HashConstIter(const table_type * table, size_t tableIndex, size_t nodeIndex);
 
       const Node & operator*() const;
       const Node * operator->() const;
@@ -30,10 +28,15 @@ namespace kondrat
       bool operator!=(const HashConstIter & other) const;
 
     private:
-      const table_type * table_;
+      friend class CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >;
+
+      using Table = CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >;
+
+      const Table * table_;
       size_t tableIndex_;
       size_t nodeIndex_;
 
+      HashConstIter(const Table * table, size_t tableIndex, size_t nodeIndex);
       void advance();
   };
 
@@ -46,7 +49,7 @@ namespace kondrat
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   HashConstIter< Key, Value, PrimHash, SecHash, Equal >::HashConstIter(
-    const table_type * table,
+    const Table * table,
     size_t tableIndex,
     size_t nodeIndex):
     table_(table),
@@ -64,7 +67,6 @@ namespace kondrat
     {
       return table_->firstTable_[nodeIndex_];
     }
-
     return table_->secondTable_[nodeIndex_];
   }
 
@@ -94,7 +96,8 @@ namespace kondrat
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  bool HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator==(const HashConstIter & other) const
+  bool HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator==(
+    const HashConstIter & other) const
   {
     return table_ == other.table_
       && tableIndex_ == other.tableIndex_
@@ -102,7 +105,8 @@ namespace kondrat
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  bool HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator!=(const HashConstIter & other) const
+  bool HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator!=(
+    const HashConstIter & other) const
   {
     return !(*this == other);
   }
@@ -117,18 +121,16 @@ namespace kondrat
 
     while (tableIndex_ < 2)
     {
-      const topit::Vector< Node > & table = tableIndex_ == 0 ? table_->firstTable_ : table_->secondTable_;
-
+      const topit::Vector< Node > & table =
+        tableIndex_ == 0 ? table_->firstTable_ : table_->secondTable_;
       while (nodeIndex_ < table.getSize())
       {
         if (table[nodeIndex_].occupied_)
         {
           return;
         }
-
         ++nodeIndex_;
       }
-
       ++tableIndex_;
       nodeIndex_ = 0;
     }

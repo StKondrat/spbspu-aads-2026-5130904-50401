@@ -16,7 +16,7 @@ namespace
       {
         if (values[j] < values[i])
         {
-          T tmp = values[i];
+          const T tmp = values[i];
           values[i] = values[j];
           values[j] = tmp;
         }
@@ -45,7 +45,8 @@ namespace
   }
 
   template< class Storage >
-  topit::Vector< kondrat::Matrix > readMatrices(std::istream & in, const Storage & storage, size_t count)
+  topit::Vector< kondrat::Matrix > readMatrices(
+    std::istream & in, const Storage & storage, size_t count)
   {
     topit::Vector< kondrat::Matrix > matrices;
     for (size_t i = 0; i < count; ++i)

@@ -29,13 +29,13 @@ namespace kondrat
   class CuckooHashTable
   {
     public:
-      using Node = CuckooHashNode< Key, Value >;
+      using Node = detail::CuckooHashNode< Key, Value >;
       using Iterator = HashIter< Key, Value, PrimHash, SecHash, Equal >;
       using ConstIterator = HashConstIter< Key, Value, PrimHash, SecHash, Equal >;
 
       CuckooHashTable();
-      explicit CuckooHashTable(size_t capacity);
       CuckooHashTable(const CuckooHashTable & other) = default;
+      explicit CuckooHashTable(size_t capacity);
 
       CuckooHashTable & operator=(const CuckooHashTable & other);
 
@@ -128,7 +128,7 @@ namespace kondrat
   {
     CuckooHashTable copy(*this);
 
-    Node * existing = copy.findNode(key);
+    Node * const existing = copy.findNode(key);
     if (existing != nullptr)
     {
       existing->value_ = value;
@@ -151,13 +151,13 @@ namespace kondrat
   Value CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::drop(const Key & key)
   {
     CuckooHashTable copy(*this);
-    Node * node = copy.findNode(key);
+    Node * const node = copy.findNode(key);
     if (node == nullptr)
     {
       throw std::logic_error("key not found");
     }
 
-    Value value = node->value_;
+    const Value value = node->value_;
     *node = Node();
     --copy.size_;
 
@@ -174,7 +174,7 @@ namespace kondrat
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   Value & CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::get(const Key & key)
   {
-    Node * node = findNode(key);
+    Node * const node = findNode(key);
     if (node == nullptr)
     {
       throw std::logic_error("key not found");
@@ -186,7 +186,7 @@ namespace kondrat
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   const Value & CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::get(const Key & key) const
   {
-    const Node * node = findNode(key);
+    const Node * const node = findNode(key);
     if (node == nullptr)
     {
       throw std::logic_error("key not found");
