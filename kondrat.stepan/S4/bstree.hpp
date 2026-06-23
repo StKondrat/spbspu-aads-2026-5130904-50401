@@ -281,7 +281,8 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  typename BSTree< Key, Value, Compare >::const_iterator BSTree< Key, Value, Compare >::begin() const
+  typename BSTree< Key, Value, Compare >::const_iterator
+  BSTree< Key, Value, Compare >::begin() const
   {
     if (root_ == nullptr)
     {
@@ -292,13 +293,15 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  typename BSTree< Key, Value, Compare >::const_iterator BSTree< Key, Value, Compare >::end() const
+  typename BSTree< Key, Value, Compare >::const_iterator
+  BSTree< Key, Value, Compare >::end() const
   {
     return const_iterator(nullptr, root_);
   }
 
   template< class Key, class Value, class Compare >
-  typename BSTree< Key, Value, Compare >::const_iterator BSTree< Key, Value, Compare >::rotateLeft(const_iterator it)
+  typename BSTree< Key, Value, Compare >::const_iterator
+  BSTree< Key, Value, Compare >::rotateLeft(const_iterator it)
   {
     node_t * x = it.node_;
 
@@ -338,7 +341,8 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  typename BSTree< Key, Value, Compare >::const_iterator BSTree< Key, Value, Compare >::rotateRight(const_iterator it)
+  typename BSTree< Key, Value, Compare >::const_iterator
+  BSTree< Key, Value, Compare >::rotateRight(const_iterator it)
   {
     node_t * x = it.node_;
 
@@ -408,7 +412,8 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  typename BSTree< Key, Value, Compare >::node_t * BSTree< Key, Value, Compare >::findNode(const Key & key) const
+  typename BSTree< Key, Value, Compare >::node_t *
+  BSTree< Key, Value, Compare >::findNode(const Key & key) const
   {
     node_t * current = root_;
 
