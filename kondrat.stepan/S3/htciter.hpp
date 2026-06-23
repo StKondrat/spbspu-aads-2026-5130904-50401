@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <memory>
+#include <utility>
 #include "hash-node.hpp"
 
 namespace kondrat
@@ -13,36 +14,82 @@ namespace kondrat
   template< class Key, class Value >
   struct HTCIter
   {
-    template< class K, class V, class H, class E >
-    friend struct HashTable;
+    using value_type = std::pair< Key, Value >;
 
-    HTCIter();
+    HTCIter() noexcept;
 
-    HTCIter< Key, Value > & operator++();
-    HTCIter< Key, Value > operator++(int);
-
-    bool operator==(const HTCIter< Key, Value > & rhs) const;
-    bool operator!=(const HTCIter< Key, Value > & rhs) const;
-
-    const HashNode< Key, Value > & operator*() const;
-    const HashNode< Key, Value > * operator->() const;
+    HTCIter< Key, Value > & operator++() noexcept;
+    HTCIter< Key, Value > operator++(int) noexcept;
+    bool operator==(const HTCIter< Key, Value > & rhs) const noexcept;
+    bool operator!=(const HTCIter< Key, Value > & rhs) const noexcept;
+    const value_type & operator*() const noexcept;
+    const value_type * operator->() const noexcept;
 
   private:
-    HTCIter(const HashNode< Key, Value > * node, const HashNode< Key, Value > * end);
-    void skipInvalid();
+    const detail::HashNode< Key, Value > * node_;
+    const detail::HashNode< Key, Value > * end_;
 
-    const HashNode< Key, Value > * node_;
-    const HashNode< Key, Value > * end_;
+    HTCIter(const detail::HashNode< Key, Value > * node, const detail::HashNode< Key, Value > * end) noexcept;
+    void skipInvalid() noexcept;
+
+    template< class K, class V, class H, class E >
+    friend struct HashTable;
   };
 
   template< class Key, class Value >
-  HTCIter< Key, Value >::HTCIter():
+  HTCIter< Key, Value >::HTCIter() noexcept:
     node_(nullptr),
     end_(nullptr)
   {}
 
   template< class Key, class Value >
-  HTCIter< Key, Value >::HTCIter(const HashNode< Key, Value > * node, const HashNode< Key, Value > * end):
+  HTCIter< Key, Value > & HTCIter< Key, Value >::operator++() noexcept
+  {
+    assert(node_ != nullptr);
+    if (node_ != end_)
+    {
+      ++node_;
+      skipInvalid();
+    }
+    return *this;
+  }
+
+  template< class Key, class Value >
+  HTCIter< Key, Value > HTCIter< Key, Value >::operator++(int) noexcept
+  {
+    HTCIter< Key, Value > result(*this);
+    ++(*this);
+    return result;
+  }
+
+  template< class Key, class Value >
+  bool HTCIter< Key, Value >::operator==(const HTCIter< Key, Value > & rhs) const noexcept
+  {
+    return node_ == rhs.node_;
+  }
+
+  template< class Key, class Value >
+  bool HTCIter< Key, Value >::operator!=(const HTCIter< Key, Value > & rhs) const noexcept
+  {
+    return !(*this == rhs);
+  }
+
+  template< class Key, class Value >
+  const typename HTCIter< Key, Value >::value_type & HTCIter< Key, Value >::operator*() const noexcept
+  {
+    assert(node_ != nullptr);
+    assert(node_ != end_);
+    return node_->data;
+  }
+
+  template< class Key, class Value >
+  const typename HTCIter< Key, Value >::value_type * HTCIter< Key, Value >::operator->() const noexcept
+  {
+    return std::addressof(operator*());
+  }
+
+  template< class Key, class Value >
+  HTCIter< Key, Value >::HTCIter(const detail::HashNode< Key, Value > * node, const detail::HashNode< Key, Value > * end) noexcept:
     node_(node),
     end_(end)
   {
@@ -50,59 +97,9 @@ namespace kondrat
   }
 
   template< class Key, class Value >
-  HTCIter< Key, Value > & HTCIter< Key, Value >::operator++()
+  void HTCIter< Key, Value >::skipInvalid() noexcept
   {
-    assert(node_ != nullptr);
-
-    if (node_ != end_)
-    {
-      ++node_;
-      skipInvalid();
-    }
-
-    return *this;
-  }
-
-  template< class Key, class Value >
-  HTCIter< Key, Value > HTCIter< Key, Value >::operator++(int)
-  {
-    HTCIter< Key, Value > temp = *this;
-    ++(*this);
-    return temp;
-  }
-
-  template< class Key, class Value >
-  bool HTCIter< Key, Value >::operator==(const HTCIter< Key, Value > & rhs) const
-  {
-    return node_ == rhs.node_;
-  }
-
-  template< class Key, class Value >
-  bool HTCIter< Key, Value >::operator!=(const HTCIter< Key, Value > & rhs) const
-  {
-    return node_ != rhs.node_;
-  }
-
-  template< class Key, class Value >
-  const HashNode< Key, Value > & HTCIter< Key, Value >::operator*() const
-  {
-    assert(node_ != nullptr);
-    assert(node_ != end_);
-    return *node_;
-  }
-
-  template< class Key, class Value >
-  const HashNode< Key, Value > * HTCIter< Key, Value >::operator->() const
-  {
-    assert(node_ != nullptr);
-    assert(node_ != end_);
-    return std::addressof(*node_);
-  }
-
-  template< class Key, class Value >
-  void HTCIter< Key, Value >::skipInvalid()
-  {
-    while (node_ != end_ && node_->state != OCCUPIED)
+    while (node_ != end_ && node_->state != detail::OCCUPIED)
     {
       ++node_;
     }

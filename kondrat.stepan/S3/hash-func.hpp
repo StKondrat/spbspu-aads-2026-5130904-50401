@@ -2,6 +2,7 @@
 #define HASH_FUNC_HPP
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <utility>
 #include <boost/hash2/blake2.hpp>
@@ -28,10 +29,8 @@ namespace kondrat
     {
       boost::hash2::blake2b_512 hash;
       hash.update(edge.first.data(), edge.first.size());
-
       const char sep = '\0';
-      hash.update(&sep, 1);
-
+      hash.update(std::addressof(sep), 1);
       hash.update(edge.second.data(), edge.second.size());
 
       return boost::hash2::get_integral_result< size_t >(hash);

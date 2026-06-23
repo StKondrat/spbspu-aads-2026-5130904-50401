@@ -2,77 +2,102 @@
 #define HASH_TABLE_HPP
 
 #include <cstddef>
-#include <utility>
-#include <stdexcept>
+#include <functional>
 #include <memory>
+#include <stdexcept>
+#include <utility>
 #include "hash-node.hpp"
 #include "htiter.hpp"
 #include "htciter.hpp"
 
 namespace kondrat
 {
-  template< class T >
-  struct Equal
-  {
-    bool operator()(const T & lhs, const T & rhs) const;
-  };
-
-  template< class Key, class Value, class Hash, class Equal >
+  template< class Key, class Value, class Hash = std::hash< Key >, class Equal = std::equal_to< Key > >
   struct HashTable
   {
+    using value_type = std::pair< Key, Value >;
+
     HashTable();
-    HashTable(size_t capacity);
-    ~HashTable();
     HashTable(const HashTable & table);
     HashTable(HashTable && table) noexcept;
+    explicit HashTable(size_t capacity);
+    ~HashTable() noexcept;
+
     HashTable & operator=(const HashTable & table);
     HashTable & operator=(HashTable && table) noexcept;
 
     void add(const Key & key, const Value & value);
-    Value drop(const Key & key);
-
-    bool has(const Key & key) const;
-    Value & get(const Key & key);
-    const Value & get(const Key & key) const;
-
+    void add(const Key & key, Value && value);
+    void erase(const Key & key);
+    bool contains(const Key & key) const;
+    Value & at(const Key & key);
+    const Value & at(const Key & key) const;
     void rehash(size_t newCapacity);
-    void clear();
+    void clear() noexcept;
     void swap(HashTable & table) noexcept;
-
-    size_t size() const;
-    size_t capacity() const;
-    bool empty() const;
-
-    HTIter< Key, Value > begin();
-    HTIter< Key, Value > end();
-    HTCIter< Key, Value > begin() const;
-    HTCIter< Key, Value > end() const;
+    size_t size() const noexcept;
+    size_t capacity() const noexcept;
+    bool empty() const noexcept;
+    HTIter< Key, Value > begin() noexcept;
+    HTIter< Key, Value > end() noexcept;
+    HTCIter< Key, Value > begin() const noexcept;
+    HTCIter< Key, Value > end() const noexcept;
 
   private:
-    size_t getIndex(const Key & key, size_t attempt) const;
-    size_t findIndex(const Key & key) const;
-    size_t findSlot(const Key & key) const;
+    static const size_t DEFAULT_CAPACITY = 17;
 
-    HashNode< Key, Value > * data_;
+    detail::HashNode< Key, Value > * data_;
     size_t size_;
     size_t capacity_;
     Hash hash_;
     Equal equal_;
-  };
 
-  template< class T >
-  bool Equal< T >::operator()(const T & lhs, const T & rhs) const
-  {
-    return lhs == rhs;
-  }
+    size_t getIndex(const Key & key, size_t attempt) const;
+    size_t findIndex(const Key & key) const;
+    size_t findSlot(const Key & key) const;
+
+    template< class V >
+    void addImpl(const Key & key, V && value);
+  };
 
   template< class Key, class Value, class Hash, class Equal >
   HashTable< Key, Value, Hash, Equal >::HashTable():
-    data_(new HashNode< Key, Value >[16]),
+    data_(new detail::HashNode< Key, Value >[DEFAULT_CAPACITY]),
     size_(0),
-    capacity_(16),
+    capacity_(DEFAULT_CAPACITY),
     hash_(),
     equal_()
+  {}
+
+  template< class Key, class Value, class Hash, class Equal >
+  HashTable< Key, Value, Hash, Equal >::HashTable(const HashTable & table):
+    data_(new detail::HashNode< Key, Value >[table.capacity_]),
+    size_(table.size_),
+    capacity_(table.capacity_),
+    hash_(table.hash_),
+    equal_(table.equal_)
+  {
+    try
+    {
+      for (size_t i = 0; i < capacity_; ++i)
+      {
+        data_[i] = table.data_[i];
+      }
+    }
+    catch (...)
+    {
+      delete[] data_;
+      throw;
+    }
+  }
+
+  template< class Key, class Value, class Hash, class Equal >
+  HashTable< Key, Value, Hash, Equal >::HashTable(HashTable && table) noexcept:
+    data_(std::exchange(table.data_, nullptr)),
+    size_(std::exchange(table.size_, 0)),
+    capacity_(std::exchange(table.capacity_, 0)),
+    hash_(std::move(table.hash_)),
+    equal_(std::move(table.equal_))
   {}
 
   template< class Key, class Value, class Hash, class Equal >
@@ -87,174 +112,128 @@ namespace kondrat
     {
       throw std::logic_error("invalid capacity");
     }
-    data_ = new HashNode< Key, Value >[capacity_];
+    data_ = new detail::HashNode< Key, Value >[capacity_];
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  HashTable< Key, Value, Hash, Equal >::~HashTable()
+  HashTable< Key, Value, Hash, Equal >::~HashTable() noexcept
   {
     delete[] data_;
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  HashTable< Key, Value, Hash, Equal >::HashTable(const HashTable & table):
-    data_(nullptr),
-    size_(0),
-    capacity_(table.capacity_),
-    hash_(table.hash_),
-    equal_(table.equal_)
+  HashTable< Key, Value, Hash, Equal > &
+  HashTable< Key, Value, Hash, Equal >::operator=(const HashTable & table)
   {
-    HashNode< Key, Value > * newData = new HashNode< Key, Value >[capacity_];
-
-    try
+    if (this != std::addressof(table))
     {
-      for (size_t i = 0; i < capacity_; ++i)
-      {
-        newData[i] = table.data_[i];
-      }
+      HashTable< Key, Value, Hash, Equal > copy(table);
+      swap(copy);
     }
-    catch (...)
-    {
-      delete[] newData;
-      throw;
-    }
-
-    data_ = newData;
-    size_ = table.size_;
-  }
-
-  template< class Key, class Value, class Hash, class Equal >
-  HashTable< Key, Value, Hash, Equal >::HashTable(HashTable && table) noexcept:
-    data_(table.data_),
-    size_(table.size_),
-    capacity_(table.capacity_),
-    hash_(table.hash_),
-    equal_(table.equal_)
-  {
-    table.data_ = nullptr;
-    table.size_ = 0;
-    table.capacity_ = 0;
-  }
-
-  template< class Key, class Value, class Hash, class Equal >
-  HashTable< Key, Value, Hash, Equal > & HashTable< Key, Value, Hash, Equal >::operator=(const HashTable & table)
-  {
-    if (this == std::addressof(table))
-    {
-      return *this;
-    }
-    HashTable< Key, Value, Hash, Equal > cpy = table;
-    swap(cpy);
     return *this;
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  HashTable< Key, Value, Hash, Equal > & HashTable< Key, Value, Hash, Equal >::operator=(HashTable && table) noexcept
+  HashTable< Key, Value, Hash, Equal > &
+  HashTable< Key, Value, Hash, Equal >::operator=(HashTable && table) noexcept
   {
-    if (this == std::addressof(table))
+    if (this != std::addressof(table))
     {
-      return *this;
+      HashTable< Key, Value, Hash, Equal > moved(std::move(table));
+      swap(moved);
     }
-    HashTable< Key, Value, Hash, Equal > cpy(std::move(table));
-    swap(cpy);
     return *this;
   }
 
   template< class Key, class Value, class Hash, class Equal >
   void HashTable< Key, Value, Hash, Equal >::add(const Key & key, const Value & value)
   {
-    size_t index = findSlot(key);
-
-    if (data_[index].state == OCCUPIED)
-    {
-      data_[index].value = value;
-    }
-    else
-    {
-      HashNode< Key, Value > node(key, value, OCCUPIED);
-      data_[index] = node;
-      ++size_;
-    }
+    addImpl(key, value);
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  Value HashTable< Key, Value, Hash, Equal >::drop(const Key & key)
+  void HashTable< Key, Value, Hash, Equal >::add(const Key & key, Value && value)
   {
-    size_t index = findIndex(key);
+    addImpl(key, std::move(value));
+  }
 
+  template< class Key, class Value, class Hash, class Equal >
+  template< class V >
+  void HashTable< Key, Value, Hash, Equal >::addImpl(const Key & key, V && value)
+  {
+    const size_t index = findSlot(key);
+    data_[index].data.first = key;
+    data_[index].data.second = std::forward< V >(value);
+    data_[index].state = detail::OCCUPIED;
+    ++size_;
+  }
+
+  template< class Key, class Value, class Hash, class Equal >
+  void HashTable< Key, Value, Hash, Equal >::erase(const Key & key)
+  {
+    const size_t index = findIndex(key);
     if (index == capacity_)
     {
       throw std::logic_error("key not found");
     }
-
-    Value cpy = data_[index].value;
-    data_[index].state = TOMBSTONE;
+    data_[index].state = detail::TOMBSTONE;
     --size_;
-
-    return cpy;
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  bool HashTable< Key, Value, Hash, Equal >::has(const Key & key) const
+  bool HashTable< Key, Value, Hash, Equal >::contains(const Key & key) const
   {
     return findIndex(key) != capacity_;
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  Value & HashTable< Key, Value, Hash, Equal >::get(const Key & key)
+  Value & HashTable< Key, Value, Hash, Equal >::at(const Key & key)
   {
-    size_t index = findIndex(key);
-
+    const size_t index = findIndex(key);
     if (index == capacity_)
     {
       throw std::logic_error("key not found");
     }
-
-    return data_[index].value;
+    return data_[index].data.second;
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  const Value & HashTable< Key, Value, Hash, Equal >::get(const Key & key) const
+  const Value & HashTable< Key, Value, Hash, Equal >::at(const Key & key) const
   {
-    size_t index = findIndex(key);
-
+    const size_t index = findIndex(key);
     if (index == capacity_)
     {
       throw std::logic_error("key not found");
     }
-
-    return data_[index].value;
+    return data_[index].data.second;
   }
 
   template< class Key, class Value, class Hash, class Equal >
   void HashTable< Key, Value, Hash, Equal >::rehash(size_t newCapacity)
   {
-    if (newCapacity == 0)
+    if (newCapacity == 0 || newCapacity < size_)
     {
       throw std::logic_error("invalid capacity");
     }
 
     HashTable< Key, Value, Hash, Equal > newTable(newCapacity);
-
     for (size_t i = 0; i < capacity_; ++i)
     {
-      if (data_[i].state == OCCUPIED)
+      if (data_[i].state == detail::OCCUPIED)
       {
-        newTable.add(data_[i].key, data_[i].value);
+        newTable.add(data_[i].data.first, data_[i].data.second);
       }
     }
-
     swap(newTable);
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  void HashTable< Key, Value, Hash, Equal >::clear()
+  void HashTable< Key, Value, Hash, Equal >::clear() noexcept
   {
     for (size_t i = 0; i < capacity_; ++i)
     {
-      data_[i].state = EMPTY;
+      data_[i].state = detail::EMPTY;
     }
-
     size_ = 0;
   }
 
@@ -269,43 +248,43 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  size_t HashTable< Key, Value, Hash, Equal >::size() const
+  size_t HashTable< Key, Value, Hash, Equal >::size() const noexcept
   {
     return size_;
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  size_t HashTable< Key, Value, Hash, Equal >::capacity() const
+  size_t HashTable< Key, Value, Hash, Equal >::capacity() const noexcept
   {
     return capacity_;
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  bool HashTable< Key, Value, Hash, Equal >::empty() const
+  bool HashTable< Key, Value, Hash, Equal >::empty() const noexcept
   {
     return size_ == 0;
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  HTIter< Key, Value > HashTable< Key, Value, Hash, Equal >::begin()
+  HTIter< Key, Value > HashTable< Key, Value, Hash, Equal >::begin() noexcept
   {
     return HTIter< Key, Value >(data_, data_ + capacity_);
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  HTIter< Key, Value > HashTable< Key, Value, Hash, Equal >::end()
+  HTIter< Key, Value > HashTable< Key, Value, Hash, Equal >::end() noexcept
   {
     return HTIter< Key, Value >(data_ + capacity_, data_ + capacity_);
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  HTCIter< Key, Value > HashTable< Key, Value, Hash, Equal >::begin() const
+  HTCIter< Key, Value > HashTable< Key, Value, Hash, Equal >::begin() const noexcept
   {
     return HTCIter< Key, Value >(data_, data_ + capacity_);
   }
 
   template< class Key, class Value, class Hash, class Equal >
-  HTCIter< Key, Value > HashTable< Key, Value, Hash, Equal >::end() const
+  HTCIter< Key, Value > HashTable< Key, Value, Hash, Equal >::end() const noexcept
   {
     return HTCIter< Key, Value >(data_ + capacity_, data_ + capacity_);
   }
@@ -319,21 +298,19 @@ namespace kondrat
   template< class Key, class Value, class Hash, class Equal >
   size_t HashTable< Key, Value, Hash, Equal >::findIndex(const Key & key) const
   {
-    for (size_t i = 0; i < capacity_; ++i)
+    for (size_t attempt = 0; attempt < capacity_; ++attempt)
     {
-      size_t index = getIndex(key, i);
-
-      if (data_[index].state == EMPTY)
+      const size_t index = getIndex(key, attempt);
+      if (data_[index].state == detail::EMPTY)
       {
         return capacity_;
       }
-
-      if (data_[index].state == OCCUPIED && equal_(data_[index].key, key))
+      if (data_[index].state == detail::OCCUPIED
+          && equal_(data_[index].data.first, key))
       {
         return index;
       }
     }
-
     return capacity_;
   }
 
@@ -341,40 +318,25 @@ namespace kondrat
   size_t HashTable< Key, Value, Hash, Equal >::findSlot(const Key & key) const
   {
     size_t firstTombstone = capacity_;
-
-    for (size_t i = 0; i < capacity_; ++i)
+    for (size_t attempt = 0; attempt < capacity_; ++attempt)
     {
-      size_t index = getIndex(key, i);
-
-      if (data_[index].state == OCCUPIED)
-      {
-        if (equal_(data_[index].key, key))
-        {
-          return index;
-        }
-      }
-      else if (data_[index].state == TOMBSTONE)
+      const size_t index = getIndex(key, attempt);
+      if (data_[index].state == detail::TOMBSTONE)
       {
         if (firstTombstone == capacity_)
         {
           firstTombstone = index;
         }
       }
-      else
+      else if (data_[index].state == detail::EMPTY)
       {
-        if (firstTombstone != capacity_)
-        {
-          return firstTombstone;
-        }
-        return index;
+        return firstTombstone == capacity_ ? index : firstTombstone;
       }
     }
-
     if (firstTombstone != capacity_)
     {
       return firstTombstone;
     }
-
     throw std::overflow_error("hash table is full");
   }
 }

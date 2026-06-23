@@ -1,39 +1,35 @@
 #ifndef GRAPH_HPP
 #define GRAPH_HPP
 
-#include <string>
 #include <cstddef>
+#include <string>
 #include <utility>
 #include <vector/top-it-vector.hpp>
-#include "hash-table.hpp"
 #include "hash-func.hpp"
+#include "hash-table.hpp"
 
 namespace kondrat
 {
-  using WeightList = topit::Vector< size_t >;
+
+  using WeightList = Vector< size_t >;
   using EdgeInfo = std::pair< std::string, WeightList >;
 
   struct Graph
   {
-    Graph();
-
     void addVertex(const std::string & vertex);
     bool hasVertex(const std::string & vertex) const;
-
     void bind(const std::string & from, const std::string & to, size_t weight);
     void cut(const std::string & from, const std::string & to, size_t weight);
-
-    topit::Vector< std::string > getVertexes() const;
-    topit::Vector< EdgeInfo > getOutbound(const std::string & vertex) const;
-    topit::Vector< EdgeInfo > getInbound(const std::string & vertex) const;
-
+    Vector< std::string > getVertexes() const;
+    Vector< EdgeInfo > getOutbound(const std::string & vertex) const;
+    Vector< EdgeInfo > getInbound(const std::string & vertex) const;
     void mergeFrom(const Graph & first, const Graph & second);
-    void extractFrom(const Graph & graph, const topit::Vector< std::string > & vertexes);
-
+    void extractFrom(const Graph & graph, const Vector< std::string > & vertexes);
     void swap(Graph & graph) noexcept;
+
   private:
-    HashTable< std::string, bool, blake2, Equal< std::string > > vertexes_;
-    HashTable< EdgeKey, WeightList, edgeBlake2, Equal< EdgeKey > > edges_;
+    HashTable< std::string, bool, blake2 > vertexes_;
+    HashTable< EdgeKey, WeightList, edgeBlake2 > edges_;
   };
 }
 
