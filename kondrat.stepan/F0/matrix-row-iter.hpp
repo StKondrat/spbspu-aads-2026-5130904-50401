@@ -11,16 +11,16 @@ namespace kondrat
   class MatrixRowIter
   {
     public:
-      MatrixRowIter();
+      MatrixRowIter() noexcept;
 
-      long long & operator*() const;
-      long long * operator->() const;
+      long long & operator*() const noexcept;
+      long long * operator->() const noexcept;
 
-      MatrixRowIter & operator++();
-      MatrixRowIter operator++(int);
+      MatrixRowIter & operator++() noexcept;
+      MatrixRowIter operator++(int) noexcept;
 
-      bool operator==(const MatrixRowIter & other) const;
-      bool operator!=(const MatrixRowIter & other) const;
+      bool operator==(const MatrixRowIter & other) const noexcept;
+      bool operator!=(const MatrixRowIter & other) const noexcept;
 
     private:
       friend class Matrix;
@@ -30,7 +30,7 @@ namespace kondrat
       size_t row_;
       size_t col_;
 
-      MatrixRowIter(Matrix * matrix, size_t row, size_t col);
+      MatrixRowIter(Matrix * matrix, size_t row, size_t col) noexcept;
   };
 }
 

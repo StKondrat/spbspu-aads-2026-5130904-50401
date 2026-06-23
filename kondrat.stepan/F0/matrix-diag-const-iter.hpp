@@ -11,17 +11,17 @@ namespace kondrat
   class MatrixDiagConstIter
   {
     public:
-      MatrixDiagConstIter();
-      MatrixDiagConstIter(const MatrixDiagIter & other);
+      MatrixDiagConstIter() noexcept;
+      MatrixDiagConstIter(const MatrixDiagIter & other) noexcept;
 
-      const long long & operator*() const;
-      const long long * operator->() const;
+      const long long & operator*() const noexcept;
+      const long long * operator->() const noexcept;
 
-      MatrixDiagConstIter & operator++();
-      MatrixDiagConstIter operator++(int);
+      MatrixDiagConstIter & operator++() noexcept;
+      MatrixDiagConstIter operator++(int) noexcept;
 
-      bool operator==(const MatrixDiagConstIter & other) const;
-      bool operator!=(const MatrixDiagConstIter & other) const;
+      bool operator==(const MatrixDiagConstIter & other) const noexcept;
+      bool operator!=(const MatrixDiagConstIter & other) const noexcept;
 
     private:
       friend class Matrix;
@@ -30,7 +30,7 @@ namespace kondrat
       size_t index_;
       bool sideDiag_;
 
-      MatrixDiagConstIter(const Matrix * matrix, size_t index, bool sideDiag);
+      MatrixDiagConstIter(const Matrix * matrix, size_t index, bool sideDiag) noexcept;
   };
 }
 

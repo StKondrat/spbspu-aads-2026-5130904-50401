@@ -47,8 +47,8 @@ namespace kondrat
       Matrix operator-(const Matrix & rhs) const;
       Matrix operator*(const Matrix & rhs) const;
       Matrix operator*(ll number) const;
-      bool operator==(const Matrix & rhs) const;
-      bool operator!=(const Matrix & rhs) const;
+      bool operator==(const Matrix & rhs) const noexcept;
+      bool operator!=(const Matrix & rhs) const noexcept;
 
       size_t rows() const noexcept;
       size_t cols() const noexcept;

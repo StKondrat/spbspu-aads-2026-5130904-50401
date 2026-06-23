@@ -357,7 +357,7 @@ kondrat::Matrix kondrat::Matrix::operator*(ll number) const
   return result;
 }
 
-bool kondrat::Matrix::operator==(const Matrix & rhs) const
+bool kondrat::Matrix::operator==(const Matrix & rhs) const noexcept
 {
   if (rows_ != rhs.rows_ || cols_ != rhs.cols_)
   {
@@ -378,7 +378,7 @@ bool kondrat::Matrix::operator==(const Matrix & rhs) const
   return true;
 }
 
-bool kondrat::Matrix::operator!=(const Matrix & rhs) const
+bool kondrat::Matrix::operator!=(const Matrix & rhs) const noexcept
 {
   return !(*this == rhs);
 }

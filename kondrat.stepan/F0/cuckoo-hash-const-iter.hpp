@@ -17,16 +17,16 @@ namespace kondrat
     public:
       using value_type = typename CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::value_type;
 
-      HashConstIter();
+      HashConstIter() noexcept;
 
-      const value_type & operator*() const;
-      const value_type * operator->() const;
+      const value_type & operator*() const noexcept;
+      const value_type * operator->() const noexcept;
 
-      HashConstIter & operator++();
-      HashConstIter operator++(int);
+      HashConstIter & operator++() noexcept;
+      HashConstIter operator++(int) noexcept;
 
-      bool operator==(const HashConstIter & other) const;
-      bool operator!=(const HashConstIter & other) const;
+      bool operator==(const HashConstIter & other) const noexcept;
+      bool operator!=(const HashConstIter & other) const noexcept;
 
     private:
       friend class CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >;
@@ -38,12 +38,12 @@ namespace kondrat
       size_t tableIndex_;
       size_t nodeIndex_;
 
-      HashConstIter(const Table * table, size_t tableIndex, size_t nodeIndex);
-      void advance();
+      HashConstIter(const Table * table, size_t tableIndex, size_t nodeIndex) noexcept;
+      void advance() noexcept;
   };
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::HashConstIter():
+  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::HashConstIter() noexcept:
     table_(nullptr),
     tableIndex_(2),
     nodeIndex_(0)
@@ -53,7 +53,7 @@ namespace kondrat
   HashConstIter< Key, Value, PrimHash, SecHash, Equal >::HashConstIter(
     const Table * table,
     size_t tableIndex,
-    size_t nodeIndex):
+    size_t nodeIndex) noexcept:
     table_(table),
     tableIndex_(tableIndex),
     nodeIndex_(nodeIndex)
@@ -63,7 +63,7 @@ namespace kondrat
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   const typename HashConstIter< Key, Value, PrimHash, SecHash, Equal >::value_type &
-  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator*() const
+  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator*() const noexcept
   {
     if (tableIndex_ == 0)
     {
@@ -74,14 +74,14 @@ namespace kondrat
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   const typename HashConstIter< Key, Value, PrimHash, SecHash, Equal >::value_type *
-  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator->() const
+  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator->() const noexcept
   {
     return std::addressof(operator*());
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   HashConstIter< Key, Value, PrimHash, SecHash, Equal > &
-  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator++()
+  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator++() noexcept
   {
     ++nodeIndex_;
     advance();
@@ -90,7 +90,7 @@ namespace kondrat
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   HashConstIter< Key, Value, PrimHash, SecHash, Equal >
-  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator++(int)
+  HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator++(int) noexcept
   {
     HashConstIter copy(*this);
     ++(*this);
@@ -99,7 +99,7 @@ namespace kondrat
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   bool HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator==(
-    const HashConstIter & other) const
+    const HashConstIter & other) const noexcept
   {
     return table_ == other.table_
       && tableIndex_ == other.tableIndex_
@@ -108,13 +108,13 @@ namespace kondrat
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   bool HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator!=(
-    const HashConstIter & other) const
+    const HashConstIter & other) const noexcept
   {
     return !(*this == other);
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  void HashConstIter< Key, Value, PrimHash, SecHash, Equal >::advance()
+  void HashConstIter< Key, Value, PrimHash, SecHash, Equal >::advance() noexcept
   {
     if (table_ == nullptr || tableIndex_ == 2)
     {
