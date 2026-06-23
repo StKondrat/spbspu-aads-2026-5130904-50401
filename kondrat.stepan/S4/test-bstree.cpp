@@ -26,14 +26,14 @@ BOOST_AUTO_TEST_CASE(PushGetHas)
   BOOST_CHECK(!tree.empty());
   BOOST_CHECK(tree.size() == 3);
 
-  BOOST_CHECK(tree.has(1));
-  BOOST_CHECK(tree.has(2));
-  BOOST_CHECK(tree.has(3));
-  BOOST_CHECK(!tree.has(4));
+  BOOST_CHECK(tree.contains(1));
+  BOOST_CHECK(tree.contains(2));
+  BOOST_CHECK(tree.contains(3));
+  BOOST_CHECK(!tree.contains(4));
 
-  BOOST_CHECK(tree.get(1) == "one");
-  BOOST_CHECK(tree.get(2) == "two");
-  BOOST_CHECK(tree.get(3) == "three");
+  BOOST_CHECK(tree.at(1) == "one");
+  BOOST_CHECK(tree.at(2) == "two");
+  BOOST_CHECK(tree.at(3) == "three");
 }
 
 BOOST_AUTO_TEST_CASE(PushUpdatesExistingKey)
@@ -44,16 +44,29 @@ BOOST_AUTO_TEST_CASE(PushUpdatesExistingKey)
   tree.push(1, "new-one");
 
   BOOST_CHECK(tree.size() == 1);
-  BOOST_CHECK(tree.get(1) == "new-one");
+  BOOST_CHECK(tree.at(1) == "new-one");
 }
 
-BOOST_AUTO_TEST_CASE(GetThrows)
+BOOST_AUTO_TEST_CASE(RvaluePushAndSubscript)
+{
+  tree_t tree;
+  std::string value = "one";
+
+  tree.push(1, std::move(value));
+  tree[2] = "two";
+
+  BOOST_CHECK(tree.size() == 2);
+  BOOST_CHECK(tree.at(1) == "one");
+  BOOST_CHECK(tree.at(2) == "two");
+}
+
+BOOST_AUTO_TEST_CASE(AtThrows)
 {
   tree_t tree;
 
   tree.push(1, "one");
 
-  BOOST_CHECK_THROW(tree.get(2), std::logic_error);
+  BOOST_CHECK_THROW(tree.at(2), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(IteratorOrder)
@@ -100,7 +113,7 @@ BOOST_AUTO_TEST_CASE(ConstIteratorOrder)
   BOOST_CHECK(i == 3);
 }
 
-BOOST_AUTO_TEST_CASE(DropLeaf)
+BOOST_AUTO_TEST_CASE(EraseLeaf)
 {
   tree_t tree;
 
@@ -108,16 +121,14 @@ BOOST_AUTO_TEST_CASE(DropLeaf)
   tree.push(1, "one");
   tree.push(3, "three");
 
-  std::string value = tree.drop(1);
-
-  BOOST_CHECK(value == "one");
+  BOOST_CHECK(tree.erase(1) == 1);
   BOOST_CHECK(tree.size() == 2);
-  BOOST_CHECK(!tree.has(1));
-  BOOST_CHECK(tree.has(2));
-  BOOST_CHECK(tree.has(3));
+  BOOST_CHECK(!tree.contains(1));
+  BOOST_CHECK(tree.contains(2));
+  BOOST_CHECK(tree.contains(3));
 }
 
-BOOST_AUTO_TEST_CASE(DropNodeWithOneChild)
+BOOST_AUTO_TEST_CASE(EraseNodeWithOneChild)
 {
   tree_t tree;
 
@@ -125,16 +136,14 @@ BOOST_AUTO_TEST_CASE(DropNodeWithOneChild)
   tree.push(3, "three");
   tree.push(2, "two");
 
-  std::string value = tree.drop(3);
-
-  BOOST_CHECK(value == "three");
+  BOOST_CHECK(tree.erase(3) == 1);
   BOOST_CHECK(tree.size() == 2);
-  BOOST_CHECK(!tree.has(3));
-  BOOST_CHECK(tree.has(2));
-  BOOST_CHECK(tree.has(5));
+  BOOST_CHECK(!tree.contains(3));
+  BOOST_CHECK(tree.contains(2));
+  BOOST_CHECK(tree.contains(5));
 }
 
-BOOST_AUTO_TEST_CASE(DropNodeWithTwoChildren)
+BOOST_AUTO_TEST_CASE(EraseNodeWithTwoChildren)
 {
   tree_t tree;
 
@@ -144,24 +153,23 @@ BOOST_AUTO_TEST_CASE(DropNodeWithTwoChildren)
   tree.push(6, "six");
   tree.push(8, "eight");
 
-  std::string value = tree.drop(7);
-
-  BOOST_CHECK(value == "seven");
+  BOOST_CHECK(tree.erase(7) == 1);
   BOOST_CHECK(tree.size() == 4);
-  BOOST_CHECK(!tree.has(7));
-  BOOST_CHECK(tree.has(5));
-  BOOST_CHECK(tree.has(3));
-  BOOST_CHECK(tree.has(6));
-  BOOST_CHECK(tree.has(8));
+  BOOST_CHECK(!tree.contains(7));
+  BOOST_CHECK(tree.contains(5));
+  BOOST_CHECK(tree.contains(3));
+  BOOST_CHECK(tree.contains(6));
+  BOOST_CHECK(tree.contains(8));
 }
 
-BOOST_AUTO_TEST_CASE(DropThrows)
+BOOST_AUTO_TEST_CASE(EraseMissing)
 {
   tree_t tree;
 
   tree.push(1, "one");
 
-  BOOST_CHECK_THROW(tree.drop(2), std::logic_error);
+  BOOST_CHECK(tree.erase(2) == 0);
+  BOOST_CHECK(tree.size() == 1);
 }
 
 BOOST_AUTO_TEST_CASE(Clear)

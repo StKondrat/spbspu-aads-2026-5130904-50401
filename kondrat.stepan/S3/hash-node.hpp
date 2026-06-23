@@ -1,39 +1,36 @@
 #ifndef HASH_NODE_HPP
 #define HASH_NODE_HPP
 
+#include <utility>
+
 namespace kondrat
 {
-  enum HashNodeState
+  namespace detail
   {
-    EMPTY,
-    OCCUPIED,
-    TOMBSTONE
-  };
+    enum HashNodeState
+    {
+      EMPTY,
+      OCCUPIED,
+      TOMBSTONE
+    };
 
-  template< class Key, class Value >
-  struct HashNode
-  {
-    Key key;
-    Value value;
-    HashNodeState state;
+    template< class Key, class Value >
+    struct HashNode
+    {
+      using value_type = std::pair< Key, Value >;
 
-    HashNode();
-    HashNode(const Key & k, const Value & v, HashNodeState st);
-  };
+      value_type data;
+      HashNodeState state;
 
-  template< class Key, class Value >
-  HashNode< Key, Value >::HashNode():
-    key(),
-    value(),
-    state(EMPTY)
-  {}
+      HashNode();
+    };
 
-  template< class Key, class Value >
-  HashNode< Key, Value >::HashNode(const Key & k, const Value & v, HashNodeState st):
-    key(k),
-    value(v),
-    state(st)
-  {}
+    template< class Key, class Value >
+    HashNode< Key, Value >::HashNode():
+      data(),
+      state(EMPTY)
+    {}
+  }
 }
 
 #endif

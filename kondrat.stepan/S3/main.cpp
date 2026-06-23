@@ -1,11 +1,13 @@
-#include <iostream>
+#include <exception>
 #include <fstream>
+#include <iostream>
 #include <limits>
-#include <sstream>
 #include <string>
+#include <utility>
 #include "graphs-table.hpp"
-#include "hash-table.hpp"
 #include "hash-func.hpp"
+#include "hash-table.hpp"
+#include "input-utils.hpp"
 
 int main(int argc, char ** argv)
 {
@@ -25,21 +27,18 @@ int main(int argc, char ** argv)
   }
 
   GraphsTable table;
-
   try
   {
     table.readFile(file);
   }
-  catch (const std::exception & e)
+  catch (const std::exception & exception)
   {
-    std::cerr << e.what() << '\n';
+    std::cerr << exception.what() << '\n';
     return 1;
   }
 
-  using cmd_t = void (GraphsTable::*)(std::istream &, std::ostream &, std::string);
-
-  HashTable< std::string, cmd_t, blake2, Equal< std::string > > commands;
-
+  using CommandFunction = bool (GraphsTable::*)(std::istream &, std::ostream &, const std::string &);
+  HashTable< std::string, CommandFunction, blake2 > commands;
   commands.add("graphs", &GraphsTable::graphs);
   commands.add("vertexes", &GraphsTable::vertexes);
   commands.add("outbound", &GraphsTable::outbound);
@@ -50,35 +49,33 @@ int main(int argc, char ** argv)
   commands.add("merge", &GraphsTable::merge);
   commands.add("extract", &GraphsTable::extract);
 
-  std::string cmd;
-
-  while (std::cin >> cmd)
+  std::string commandName;
+  while (std::cin >> commandName)
   {
     std::string graphName;
-
-    if (cmd != "graphs")
+    if (commandName != "graphs" && !detail::readArgument(std::cin, graphName))
     {
-      if (!(std::cin >> graphName))
-      {
-        std::cout << "<INVALID COMMAND>\n";
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits< std::streamsize >::max(), '\n');
-        continue;
-      }
+      std::cout << "<INVALID COMMAND>\n";
+      std::cin.clear();
+      std::cin.ignore(std::numeric_limits< std::streamsize >::max(), '\n');
+      continue;
     }
-
-    std::string args;
-    std::getline(std::cin, args);
-    std::istringstream input(args);
 
     try
     {
-      cmd_t command = commands.get(cmd);
-      (table.*command)(input, std::cout, graphName);
+      const CommandFunction command = commands.at(commandName);
+      const bool hasOutput = (table.*command)(std::cin, std::cout, graphName);
+      if (hasOutput)
+      {
+        std::cout << '\n';
+      }
     }
     catch (...)
     {
       std::cout << "<INVALID COMMAND>\n";
     }
+
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits< std::streamsize >::max(), '\n');
   }
 }

@@ -1,234 +1,202 @@
-#include <stdexcept>
 #include "graph.hpp"
 
-namespace kondrat
-{
-  Graph::Graph():
-    vertexes_(),
-    edges_()
-  {}
+#include <stdexcept>
+#include <utility>
 
-  void Graph::addVertex(const std::string & vertex)
+void kondrat::Graph::addVertex(const std::string & vertex)
+{
+  if (!vertexes_.contains(vertex))
   {
     vertexes_.add(vertex, true);
   }
+}
 
-  bool Graph::hasVertex(const std::string & vertex) const
+bool kondrat::Graph::hasVertex(const std::string & vertex) const
+{
+  return vertexes_.contains(vertex);
+}
+
+void kondrat::Graph::bind(const std::string & from, const std::string & to, size_t weight)
+{
+  Graph copy(*this);
+  copy.addVertex(from);
+  copy.addVertex(to);
+
+  const EdgeKey key(from, to);
+  if (copy.edges_.contains(key))
   {
-    return vertexes_.has(vertex);
+    copy.edges_.at(key).pushBack(weight);
+  }
+  else
+  {
+    WeightList weights;
+    weights.pushBack(weight);
+    copy.edges_.add(key, std::move(weights));
+  }
+  swap(copy);
+}
+
+void kondrat::Graph::cut(const std::string & from, const std::string & to, size_t weight)
+{
+  if (!hasVertex(from) || !hasVertex(to))
+  {
+    throw std::logic_error("invalid graph operation");
   }
 
-  void Graph::bind(const std::string & from, const std::string & to, size_t weight)
+  const EdgeKey key(from, to);
+  if (!edges_.contains(key))
   {
-    Graph cpy(*this);
-
-    cpy.vertexes_.add(from, true);
-    cpy.vertexes_.add(to, true);
-
-    EdgeKey key(from, to);
-
-    if (cpy.edges_.has(key))
-    {
-      cpy.edges_.get(key).pushBack(weight);
-    }
-    else
-    {
-      WeightList weights;
-      weights.pushBack(weight);
-      cpy.edges_.add(key, weights);
-    }
-
-    swap(cpy);
+    throw std::logic_error("invalid graph operation");
   }
 
-  void Graph::cut(const std::string & from, const std::string & to, size_t weight)
+  Graph copy(*this);
+  WeightList & weights = copy.edges_.at(key);
+  bool found = false;
+  for (size_t i = 0; i < weights.getSize(); ++i)
   {
-    if (!hasVertex(from) || !hasVertex(to))
+    if (weights[i] == weight)
+    {
+      weights.erase(i);
+      found = true;
+      break;
+    }
+  }
+  if (!found)
+  {
+    throw std::logic_error("invalid graph operation");
+  }
+  if (weights.isEmpty())
+  {
+    copy.edges_.erase(key);
+  }
+  swap(copy);
+}
+
+kondrat::Vector< std::string > kondrat::Graph::getVertexes() const
+{
+  Vector< std::string > result;
+  HTCIter< std::string, bool > it = vertexes_.begin();
+  const HTCIter< std::string, bool > end = vertexes_.end();
+  while (it != end)
+  {
+    result.pushBack(it->first);
+    ++it;
+  }
+  return result;
+}
+
+kondrat::Vector< kondrat::EdgeInfo >
+kondrat::Graph::getOutbound(const std::string & vertex) const
+{
+  if (!hasVertex(vertex))
+  {
+    throw std::logic_error("invalid graph operation");
+  }
+
+  Vector< EdgeInfo > result;
+  HTCIter< EdgeKey, WeightList > it = edges_.begin();
+  const HTCIter< EdgeKey, WeightList > end = edges_.end();
+  while (it != end)
+  {
+    if (it->first.first == vertex)
+    {
+      result.pushBack(EdgeInfo(it->first.second, it->second));
+    }
+    ++it;
+  }
+  return result;
+}
+
+kondrat::Vector< kondrat::EdgeInfo >
+kondrat::Graph::getInbound(const std::string & vertex) const
+{
+  if (!hasVertex(vertex))
+  {
+    throw std::logic_error("invalid graph operation");
+  }
+
+  Vector< EdgeInfo > result;
+  HTCIter< EdgeKey, WeightList > it = edges_.begin();
+  const HTCIter< EdgeKey, WeightList > end = edges_.end();
+  while (it != end)
+  {
+    if (it->first.second == vertex)
+    {
+      result.pushBack(EdgeInfo(it->first.first, it->second));
+    }
+    ++it;
+  }
+  return result;
+}
+
+void kondrat::Graph::mergeFrom(const Graph & first, const Graph & second)
+{
+  Graph copy;
+  const Vector< std::string > firstVertexes = first.getVertexes();
+  const Vector< std::string > secondVertexes = second.getVertexes();
+  for (size_t i = 0; i < firstVertexes.getSize(); ++i)
+  {
+    copy.addVertex(firstVertexes[i]);
+  }
+  for (size_t i = 0; i < secondVertexes.getSize(); ++i)
+  {
+    copy.addVertex(secondVertexes[i]);
+  }
+
+  HTCIter< EdgeKey, WeightList > firstIt = first.edges_.begin();
+  const HTCIter< EdgeKey, WeightList > firstEnd = first.edges_.end();
+  while (firstIt != firstEnd)
+  {
+    for (size_t i = 0; i < firstIt->second.getSize(); ++i)
+    {
+      copy.bind(firstIt->first.first, firstIt->first.second, firstIt->second[i]);
+    }
+    ++firstIt;
+  }
+
+  HTCIter< EdgeKey, WeightList > secondIt = second.edges_.begin();
+  const HTCIter< EdgeKey, WeightList > secondEnd = second.edges_.end();
+  while (secondIt != secondEnd)
+  {
+    for (size_t i = 0; i < secondIt->second.getSize(); ++i)
+    {
+      copy.bind(secondIt->first.first, secondIt->first.second, secondIt->second[i]);
+    }
+    ++secondIt;
+  }
+  swap(copy);
+}
+
+void kondrat::Graph::extractFrom(const Graph & graph, const Vector< std::string > & vertexes)
+{
+  Graph copy;
+  for (size_t i = 0; i < vertexes.getSize(); ++i)
+  {
+    if (!graph.hasVertex(vertexes[i]))
     {
       throw std::logic_error("invalid graph operation");
     }
-
-    EdgeKey key(from, to);
-
-    if (!edges_.has(key))
-    {
-      throw std::logic_error("invalid graph operation");
-    }
-
-    Graph cpy(*this);
-    WeightList & weights = cpy.edges_.get(key);
-
-    bool found = false;
-
-    for (size_t i = 0; i < weights.getSize(); ++i)
-    {
-      if (weights[i] == weight)
-      {
-        weights.erase(i);
-        found = true;
-        break;
-      }
-    }
-
-    if (!found)
-    {
-      throw std::logic_error("invalid graph operation");
-    }
-
-    if (weights.isEmpty())
-    {
-      cpy.edges_.drop(key);
-    }
-
-    swap(cpy);
+    copy.addVertex(vertexes[i]);
   }
 
-  topit::Vector< std::string > Graph::getVertexes() const
+  HTCIter< EdgeKey, WeightList > it = graph.edges_.begin();
+  const HTCIter< EdgeKey, WeightList > end = graph.edges_.end();
+  while (it != end)
   {
-    topit::Vector< std::string > result;
-
-    HTCIter< std::string, bool > it = vertexes_.begin();
-    HTCIter< std::string, bool > end = vertexes_.end();
-
-    while (it != end)
+    if (copy.hasVertex(it->first.first) && copy.hasVertex(it->first.second))
     {
-      result.pushBack(it->key);
-      ++it;
-    }
-
-    return result;
-  }
-
-  topit::Vector< EdgeInfo > Graph::getOutbound(const std::string & vertex) const
-  {
-    if (!hasVertex(vertex))
-    {
-      throw std::logic_error("invalid graph operation");
-    }
-
-    topit::Vector< EdgeInfo > result;
-
-    HTCIter< EdgeKey, WeightList > it = edges_.begin();
-    HTCIter< EdgeKey, WeightList > end = edges_.end();
-
-    while (it != end)
-    {
-      if (it->key.first == vertex)
+      for (size_t i = 0; i < it->second.getSize(); ++i)
       {
-        EdgeInfo info(it->key.second, it->value);
-        result.pushBack(info);
+        copy.bind(it->first.first, it->first.second, it->second[i]);
       }
-
-      ++it;
     }
-
-    return result;
+    ++it;
   }
+  swap(copy);
+}
 
-  topit::Vector< EdgeInfo > Graph::getInbound(const std::string & vertex) const
-  {
-    if (!hasVertex(vertex))
-    {
-      throw std::logic_error("invalid graph operator");
-    }
-
-    topit::Vector< EdgeInfo > result;
-
-    HTCIter< EdgeKey, WeightList > it = edges_.begin();
-    HTCIter< EdgeKey, WeightList > end = edges_.end();
-
-    while (it != end)
-    {
-      if (it->key.second == vertex)
-      {
-        EdgeInfo info(it->key.first, it->value);
-        result.pushBack(info);
-      }
-      ++it;
-    }
-
-    return result;
-  }
-
-  void Graph::mergeFrom(const Graph & first, const Graph & second)
-  {
-    Graph cpy;
-
-    topit::Vector< std::string > firstVertexes = first.getVertexes();
-    topit::Vector< std::string > secondVertexes = second.getVertexes();
-
-    for (size_t i = 0; i < firstVertexes.getSize(); ++i)
-    {
-      cpy.vertexes_.add(firstVertexes[i], true);
-    }
-
-    for (size_t i = 0; i < secondVertexes.getSize(); ++i)
-    {
-      cpy.vertexes_.add(secondVertexes[i], true);
-    }
-
-    HTCIter< EdgeKey, WeightList > it1 = first.edges_.begin();
-    HTCIter< EdgeKey, WeightList > end1 = first.edges_.end();
-
-    while (it1 != end1)
-    {
-      for (size_t i = 0; i < it1->value.getSize(); ++i)
-      {
-        cpy.bind(it1->key.first, it1->key.second, it1->value[i]);
-      }
-      ++it1;
-    }
-
-    HTCIter< EdgeKey, WeightList > it2 = second.edges_.begin();
-    HTCIter< EdgeKey, WeightList > end2 = second.edges_.end();
-
-    while (it2 != end2)
-    {
-      for (size_t i = 0; i < it2->value.getSize(); ++i)
-      {
-        cpy.bind(it2->key.first, it2->key.second, it2->value[i]);
-      }
-      ++it2;
-    }
-
-    swap(cpy);
-  }
-
-  void Graph::extractFrom(const Graph & graph, const topit::Vector< std::string > & vertexes)
-  {
-    Graph cpy;
-
-    for (size_t i = 0; i < vertexes.getSize(); ++i)
-    {
-      if (!graph.hasVertex(vertexes[i]))
-      {
-        throw std::logic_error("invalid graph operation");
-      }
-
-      cpy.vertexes_.add(vertexes[i], true);
-    }
-
-    HTCIter< EdgeKey, WeightList > it = graph.edges_.begin();
-    HTCIter< EdgeKey, WeightList > end = graph.edges_.end();
-
-    while (it != end)
-    {
-      if (cpy.hasVertex(it->key.first) && cpy.hasVertex(it->key.second))
-      {
-        for (size_t i = 0; i < it->value.getSize(); ++i)
-        {
-          cpy.bind(it->key.first, it->key.second, it->value[i]);
-        }
-      }
-      ++it;
-    }
-
-    swap(cpy);
-  }
-
-  void Graph::swap(Graph & graph) noexcept
-  {
-    vertexes_.swap(graph.vertexes_);
-    edges_.swap(graph.edges_);
-  }
+void kondrat::Graph::swap(Graph & graph) noexcept
+{
+  vertexes_.swap(graph.vertexes_);
+  edges_.swap(graph.edges_);
 }

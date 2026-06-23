@@ -39,13 +39,13 @@ int main(int argc, char ** argv)
         break;
       }
 
-      datasets.get(currentName).push(key, value);
+      datasets.at(currentName).push(key, value);
     }
     catch (const std::exception &)
     {
       currentName = token;
 
-      if (!datasets.has(currentName))
+      if (!datasets.contains(currentName))
       {
         datasets.push(currentName, kondrat::Dictionary{});
       }
@@ -67,7 +67,7 @@ int main(int argc, char ** argv)
   {
     try
     {
-      commands.get(command)(std::cin, std::cout, datasets);
+      commands.at(command)(std::cin, std::cout, datasets);
     }
     catch (const std::exception &)
     {
