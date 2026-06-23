@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <memory>
 #include <vector/top-it-vector.hpp>
+#include "cuckoo-hash-node.hpp"
 
 namespace kondrat
 {
@@ -14,12 +15,12 @@ namespace kondrat
   class HashConstIter
   {
     public:
-      using Node = typename CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::Node;
+      using value_type = typename CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::value_type;
 
       HashConstIter();
 
-      const Node & operator*() const;
-      const Node * operator->() const;
+      const value_type & operator*() const;
+      const value_type * operator->() const;
 
       HashConstIter & operator++();
       HashConstIter operator++(int);
@@ -31,6 +32,7 @@ namespace kondrat
       friend class CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >;
 
       using Table = CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >;
+      using Node = detail::CuckooHashNode< Key, Value >;
 
       const Table * table_;
       size_t tableIndex_;
@@ -60,18 +62,18 @@ namespace kondrat
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  const typename HashConstIter< Key, Value, PrimHash, SecHash, Equal >::Node &
+  const typename HashConstIter< Key, Value, PrimHash, SecHash, Equal >::value_type &
   HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator*() const
   {
     if (tableIndex_ == 0)
     {
-      return table_->firstTable_[nodeIndex_];
+      return table_->firstTable_[nodeIndex_].data_;
     }
-    return table_->secondTable_[nodeIndex_];
+    return table_->secondTable_[nodeIndex_].data_;
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  const typename HashConstIter< Key, Value, PrimHash, SecHash, Equal >::Node *
+  const typename HashConstIter< Key, Value, PrimHash, SecHash, Equal >::value_type *
   HashConstIter< Key, Value, PrimHash, SecHash, Equal >::operator->() const
   {
     return std::addressof(operator*());
@@ -121,7 +123,7 @@ namespace kondrat
 
     while (tableIndex_ < 2)
     {
-      const topit::Vector< Node > & table =
+      const kondrat::Vector< Node > & table =
         tableIndex_ == 0 ? table_->firstTable_ : table_->secondTable_;
       while (nodeIndex_ < table.getSize())
       {

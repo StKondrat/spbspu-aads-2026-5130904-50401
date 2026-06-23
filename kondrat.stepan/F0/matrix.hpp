@@ -105,15 +105,15 @@ namespace kondrat
 
       size_t rows_;
       size_t cols_;
-      topit::Vector< ll > data_;
+      kondrat::Vector< ll > data_;
 
       size_t index(size_t row, size_t col) const;
   };
 
-  Matrix concatRows(const topit::Vector< Matrix > & matrices);
-  Matrix concatCols(const topit::Vector< Matrix > & matrices);
-  Matrix concatMainDiag(const topit::Vector< Matrix > & matrices);
-  Matrix concatSideDiag(const topit::Vector< Matrix > & matrices);
+  Matrix concatRows(const kondrat::Vector< Matrix > & matrices);
+  Matrix concatCols(const kondrat::Vector< Matrix > & matrices);
+  Matrix concatMainDiag(const kondrat::Vector< Matrix > & matrices);
+  Matrix concatSideDiag(const kondrat::Vector< Matrix > & matrices);
   Matrix operator*(ll number, const Matrix & matrix);
   std::ostream & operator<<(std::ostream & out, const Matrix & matrix);
 }

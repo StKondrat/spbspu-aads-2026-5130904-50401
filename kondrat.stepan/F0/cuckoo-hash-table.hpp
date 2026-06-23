@@ -2,6 +2,7 @@
 #define CUCKOO_HASH_TABLE_HPP
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -10,13 +11,7 @@
 
 namespace kondrat
 {
-  template< class T >
-  struct KeyEqual
-  {
-    bool operator()(const T & lhs, const T & rhs) const;
-  };
-
-  template< class Key, class Value, class PrimHash, class SecHash, class Equal = KeyEqual< Key > >
+  template< class Key, class Value, class PrimHash, class SecHash, class Equal = std::equal_to< Key > >
   class CuckooHashTable;
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
@@ -29,7 +24,7 @@ namespace kondrat
   class CuckooHashTable
   {
     public:
-      using Node = detail::CuckooHashNode< Key, Value >;
+      using value_type = std::pair< Key, Value >;
       using Iterator = HashIter< Key, Value, PrimHash, SecHash, Equal >;
       using ConstIterator = HashConstIter< Key, Value, PrimHash, SecHash, Equal >;
 
@@ -39,12 +34,14 @@ namespace kondrat
 
       CuckooHashTable & operator=(const CuckooHashTable & other);
 
-      void add(const Key & key, const Value & value);
-      Value drop(const Key & key);
+      void insert(const Key & key, const Value & value);
+      void insert(const Key & key, Value && value);
+      size_t erase(const Key & key);
 
-      bool has(const Key & key) const;
-      Value & get(const Key & key);
-      const Value & get(const Key & key) const;
+      bool contains(const Key & key) const;
+      Value & at(const Key & key);
+      const Value & at(const Key & key) const;
+      Value & operator[](const Key & key);
 
       void clear();
       void rehash(size_t newCapacity);
@@ -65,12 +62,14 @@ namespace kondrat
       friend class HashIter< Key, Value, PrimHash, SecHash, Equal >;
       friend class HashConstIter< Key, Value, PrimHash, SecHash, Equal >;
 
+      using Node = detail::CuckooHashNode< Key, Value >;
+
       static const size_t minSubtableCapacity_ = 8;
       static const size_t maxLoadFactorMultiplier_ = 2;
       static const size_t maxRehashCount_ = 32;
 
-      topit::Vector< Node > firstTable_;
-      topit::Vector< Node > secondTable_;
+      kondrat::Vector< Node > firstTable_;
+      kondrat::Vector< Node > secondTable_;
       size_t size_;
       PrimHash primaryHash_;
       SecHash secondaryHash_;
@@ -86,13 +85,10 @@ namespace kondrat
 
       bool placeWithoutRehash(const Node & node);
       void rehashAndPlace(const Node & node);
-  };
 
-  template< class T >
-  bool KeyEqual< T >::operator()(const T & lhs, const T & rhs) const
-  {
-    return lhs == rhs;
-  }
+      template< class V >
+      void insertImpl(const Key & key, V && value);
+  };
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::CuckooHashTable():
@@ -124,55 +120,46 @@ namespace kondrat
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  void CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::add(const Key & key, const Value & value)
+  void CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::insert(
+    const Key & key,
+    const Value & value)
   {
-    CuckooHashTable copy(*this);
-
-    Node * const existing = copy.findNode(key);
-    if (existing != nullptr)
-    {
-      existing->value_ = value;
-    }
-    else
-    {
-      if ((copy.size_ + 1) * maxLoadFactorMultiplier_ > copy.capacity())
-      {
-        copy.rehash(copy.capacity() * maxLoadFactorMultiplier_);
-      }
-
-      copy.rehashAndPlace(Node(key, value));
-      ++copy.size_;
-    }
-
-    swap(copy);
+    insertImpl(key, value);
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  Value CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::drop(const Key & key)
+  void CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::insert(
+    const Key & key,
+    Value && value)
+  {
+    insertImpl(key, std::move(value));
+  }
+
+  template< class Key, class Value, class PrimHash, class SecHash, class Equal >
+  size_t CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::erase(const Key & key)
   {
     CuckooHashTable copy(*this);
     Node * const node = copy.findNode(key);
     if (node == nullptr)
     {
-      throw std::logic_error("key not found");
+      return 0;
     }
 
-    const Value value = node->value_;
     *node = Node();
     --copy.size_;
 
     swap(copy);
-    return value;
+    return 1;
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  bool CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::has(const Key & key) const
+  bool CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::contains(const Key & key) const
   {
     return findNode(key) != nullptr;
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  Value & CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::get(const Key & key)
+  Value & CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::at(const Key & key)
   {
     Node * const node = findNode(key);
     if (node == nullptr)
@@ -180,11 +167,11 @@ namespace kondrat
       throw std::logic_error("key not found");
     }
 
-    return node->value_;
+    return node->data_.second;
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
-  const Value & CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::get(const Key & key) const
+  const Value & CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::at(const Key & key) const
   {
     const Node * const node = findNode(key);
     if (node == nullptr)
@@ -192,7 +179,21 @@ namespace kondrat
       throw std::logic_error("key not found");
     }
 
-    return node->value_;
+    return node->data_.second;
+  }
+
+  template< class Key, class Value, class PrimHash, class SecHash, class Equal >
+  Value & CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::operator[](const Key & key)
+  {
+    Node * const node = findNode(key);
+    if (node != nullptr)
+    {
+      return node->data_.second;
+    }
+
+    insert(key, Value{});
+
+    return findNode(key)->data_.second;
   }
 
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
@@ -222,7 +223,7 @@ namespace kondrat
 
     for (ConstIterator it = cbegin(); it != cend(); ++it)
     {
-      fresh.add(it->key_, it->value_);
+      fresh.insert(it->first, it->second);
     }
 
     swap(fresh);
@@ -335,13 +336,13 @@ namespace kondrat
   CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::findNode(const Key & key)
   {
     const size_t firstPosition = firstIndex(key);
-    if (firstTable_[firstPosition].occupied_ && equal_(firstTable_[firstPosition].key_, key))
+    if (firstTable_[firstPosition].occupied_ && equal_(firstTable_[firstPosition].data_.first, key))
     {
       return std::addressof(firstTable_[firstPosition]);
     }
 
     const size_t secondPosition = secondIndex(key);
-    if (secondTable_[secondPosition].occupied_ && equal_(secondTable_[secondPosition].key_, key))
+    if (secondTable_[secondPosition].occupied_ && equal_(secondTable_[secondPosition].data_.first, key))
     {
       return std::addressof(secondTable_[secondPosition]);
     }
@@ -354,13 +355,13 @@ namespace kondrat
   CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::findNode(const Key & key) const
   {
     const size_t firstPosition = firstIndex(key);
-    if (firstTable_[firstPosition].occupied_ && equal_(firstTable_[firstPosition].key_, key))
+    if (firstTable_[firstPosition].occupied_ && equal_(firstTable_[firstPosition].data_.first, key))
     {
       return std::addressof(firstTable_[firstPosition]);
     }
 
     const size_t secondPosition = secondIndex(key);
-    if (secondTable_[secondPosition].occupied_ && equal_(secondTable_[secondPosition].key_, key))
+    if (secondTable_[secondPosition].occupied_ && equal_(secondTable_[secondPosition].data_.first, key))
     {
       return std::addressof(secondTable_[secondPosition]);
     }
@@ -371,16 +372,17 @@ namespace kondrat
   template< class Key, class Value, class PrimHash, class SecHash, class Equal >
   bool CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::placeWithoutRehash(const Node & node)
   {
-    topit::Vector< Node > firstBackup = firstTable_;
-    topit::Vector< Node > secondBackup = secondTable_;
+    kondrat::Vector< Node > firstBackup = firstTable_;
+    kondrat::Vector< Node > secondBackup = secondTable_;
     Node current = node;
     size_t tableIndex = 0;
     const size_t maxKickCount = capacity();
 
     for (size_t kickCount = 0; kickCount < maxKickCount; ++kickCount)
     {
-      topit::Vector< Node > & table = tableIndex == 0 ? firstTable_ : secondTable_;
-      const size_t position = tableIndex == 0 ? firstIndex(current.key_) : secondIndex(current.key_);
+      kondrat::Vector< Node > & table = tableIndex == 0 ? firstTable_ : secondTable_;
+      const size_t position =
+        tableIndex == 0 ? firstIndex(current.data_.first) : secondIndex(current.data_.first);
 
       if (!table[position].occupied_)
       {
@@ -414,6 +416,33 @@ namespace kondrat
     }
 
     throw std::logic_error("rehash limit exceeded");
+  }
+
+  template< class Key, class Value, class PrimHash, class SecHash, class Equal >
+  template< class V >
+  void CuckooHashTable< Key, Value, PrimHash, SecHash, Equal >::insertImpl(
+    const Key & key,
+    V && value)
+  {
+    CuckooHashTable copy(*this);
+
+    Node * const existing = copy.findNode(key);
+    if (existing != nullptr)
+    {
+      existing->data_.second = std::forward< V >(value);
+    }
+    else
+    {
+      if ((copy.size_ + 1) * maxLoadFactorMultiplier_ > copy.capacity())
+      {
+        copy.rehash(copy.capacity() * maxLoadFactorMultiplier_);
+      }
+
+      copy.rehashAndPlace(Node(key, std::forward< V >(value)));
+      ++copy.size_;
+    }
+
+    swap(copy);
   }
 }
 

@@ -556,7 +556,7 @@ kondrat::ll kondrat::Matrix::getDeterminant() const
     return at(0, 0);
   }
 
-  topit::Vector< ll > values(rows_ * cols_, 0);
+  kondrat::Vector< ll > values(rows_ * cols_, 0);
   for (size_t i = 0; i < rows_; ++i)
   {
     for (size_t j = 0; j < cols_; ++j)
@@ -609,7 +609,7 @@ kondrat::ll kondrat::Matrix::getDeterminant() const
 
 size_t kondrat::Matrix::getRank() const
 {
-  topit::Vector< ll > values(data_);
+  kondrat::Vector< ll > values(data_);
   size_t rank = 0;
   ll previousPivot = 1;
   for (size_t col = 0; col < cols_ && rank < rows_; ++col)
@@ -655,7 +655,7 @@ void kondrat::Matrix::swap(Matrix & other) noexcept
   data_.swap(other.data_);
 }
 
-kondrat::Matrix kondrat::concatRows(const topit::Vector< Matrix > & matrices)
+kondrat::Matrix kondrat::concatRows(const kondrat::Vector< Matrix > & matrices)
 {
   if (matrices.isEmpty())
   {
@@ -696,7 +696,7 @@ kondrat::Matrix kondrat::concatRows(const topit::Vector< Matrix > & matrices)
   return result;
 }
 
-kondrat::Matrix kondrat::concatCols(const topit::Vector< Matrix > & matrices)
+kondrat::Matrix kondrat::concatCols(const kondrat::Vector< Matrix > & matrices)
 {
   if (matrices.isEmpty())
   {
@@ -732,7 +732,7 @@ kondrat::Matrix kondrat::concatCols(const topit::Vector< Matrix > & matrices)
   return result;
 }
 
-kondrat::Matrix kondrat::concatMainDiag(const topit::Vector< Matrix > & matrices)
+kondrat::Matrix kondrat::concatMainDiag(const kondrat::Vector< Matrix > & matrices)
 {
   if (matrices.isEmpty())
   {
@@ -759,7 +759,7 @@ kondrat::Matrix kondrat::concatMainDiag(const topit::Vector< Matrix > & matrices
   return result;
 }
 
-kondrat::Matrix kondrat::concatSideDiag(const topit::Vector< Matrix > & matrices)
+kondrat::Matrix kondrat::concatSideDiag(const kondrat::Vector< Matrix > & matrices)
 {
   if (matrices.isEmpty())
   {

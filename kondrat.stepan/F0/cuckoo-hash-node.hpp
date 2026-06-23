@@ -1,6 +1,8 @@
 #ifndef CUCKOO_HASH_NODE_HPP
 #define CUCKOO_HASH_NODE_HPP
 
+#include <utility>
+
 namespace kondrat
 {
   namespace detail
@@ -8,25 +10,29 @@ namespace kondrat
     template< class Key, class Value >
     struct CuckooHashNode
     {
-      Key key_;
-      Value value_;
+      std::pair< Key, Value > data_;
       bool occupied_;
 
       CuckooHashNode();
       CuckooHashNode(const Key & key, const Value & value);
+      CuckooHashNode(const Key & key, Value && value);
     };
 
     template< class Key, class Value >
     CuckooHashNode< Key, Value >::CuckooHashNode():
-      key_(),
-      value_(),
+      data_(),
       occupied_(false)
     {}
 
     template< class Key, class Value >
     CuckooHashNode< Key, Value >::CuckooHashNode(const Key & key, const Value & value):
-      key_(key),
-      value_(value),
+      data_(key, value),
+      occupied_(true)
+    {}
+
+    template< class Key, class Value >
+    CuckooHashNode< Key, Value >::CuckooHashNode(const Key & key, Value && value):
+      data_(key, std::move(value)),
       occupied_(true)
     {}
   }
