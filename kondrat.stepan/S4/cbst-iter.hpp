@@ -2,6 +2,7 @@
 #define CBST_ITER_HPP
 
 #include <cassert>
+#include <memory>
 #include "bst-node.hpp"
 
 namespace kondrat
@@ -17,8 +18,8 @@ namespace kondrat
     CBSTIterator & operator--();
     CBSTIterator operator--(int);
 
-    bool operator==(const CBSTIterator & rhs) const;
-    bool operator!=(const CBSTIterator & rhs) const;
+    bool operator==(const CBSTIterator & rhs) const noexcept;
+    bool operator!=(const CBSTIterator & rhs) const noexcept;
 
     const std::pair< Key, Value > & operator*() const;
     const std::pair< Key, Value > * operator->() const;
@@ -26,12 +27,12 @@ namespace kondrat
   private:
     template< class K, class V, class C >
     friend class BSTree;
-    CBSTIterator(Node< Key, Value > * node, Node< Key, Value > * root);
-    Node< Key, Value > * getMin(Node< Key, Value > * node) const;
-    Node< Key, Value > * getMax(Node< Key, Value > * node) const;
+    CBSTIterator(detail::Node< Key, Value > * node, detail::Node< Key, Value > * root) noexcept;
+    detail::Node< Key, Value > * getMin(detail::Node< Key, Value > * node) const noexcept;
+    detail::Node< Key, Value > * getMax(detail::Node< Key, Value > * node) const noexcept;
 
-    Node< Key, Value > * node_;
-    Node< Key, Value > * root_;
+    detail::Node< Key, Value > * node_;
+    detail::Node< Key, Value > * root_;
   };
 
   template< class Key, class Value >
@@ -51,7 +52,7 @@ namespace kondrat
     }
     else
     {
-      Node< Key, Value > * parent = node_->parent_;
+      detail::Node< Key, Value > * parent = node_->parent_;
       while (parent && node_ == parent->right_)
       {
         node_ = parent;
@@ -86,7 +87,7 @@ namespace kondrat
     }
     else
     {
-      Node< Key, Value > * parent = node_->parent_;
+      detail::Node< Key, Value > * parent = node_->parent_;
       while (parent && node_ == parent->left_)
       {
         node_ = parent;
@@ -107,13 +108,13 @@ namespace kondrat
   }
 
   template< class Key, class Value >
-  bool CBSTIterator< Key, Value >::operator==(const CBSTIterator & rhs) const
+  bool CBSTIterator< Key, Value >::operator==(const CBSTIterator & rhs) const noexcept
   {
     return node_ == rhs.node_;
   }
 
   template< class Key, class Value >
-  bool CBSTIterator< Key, Value >::operator!=(const CBSTIterator & rhs) const
+  bool CBSTIterator< Key, Value >::operator!=(const CBSTIterator & rhs) const noexcept
   {
     return node_ != rhs.node_;
   }
@@ -133,13 +134,13 @@ namespace kondrat
   }
 
   template< class Key, class Value >
-  CBSTIterator< Key, Value >::CBSTIterator(Node< Key, Value > * node, Node< Key, Value > * root):
+  CBSTIterator< Key, Value >::CBSTIterator(detail::Node< Key, Value > * node, detail::Node< Key, Value > * root) noexcept:
     node_(node),
     root_(root)
   {}
 
   template< class Key, class Value >
-  Node< Key, Value > * CBSTIterator< Key, Value >::getMin(Node< Key, Value > * node) const
+  detail::Node< Key, Value > * CBSTIterator< Key, Value >::getMin(detail::Node< Key, Value > * node) const noexcept
   {
     while (node && node->left_)
     {
@@ -150,7 +151,7 @@ namespace kondrat
   }
 
   template< class Key, class Value >
-  Node< Key, Value > * CBSTIterator< Key, Value >::getMax(Node< Key, Value > * node) const
+  detail::Node< Key, Value > * CBSTIterator< Key, Value >::getMax(detail::Node< Key, Value > * node) const noexcept
   {
     while (node && node->right_)
     {

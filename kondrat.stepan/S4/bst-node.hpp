@@ -5,29 +5,33 @@
 
 namespace kondrat
 {
-  template< class Key, class Value >
-  class Node
+  namespace detail
   {
-  public:
-    Node(const Key & key, const Value & value);
-  private:
-    template< class K, class V >
-    friend class BSTIterator;
-    template< class K, class V >
-    friend class CBSTIterator;
-    template< class K, class V, class C >
-    friend class BSTree;
+    template< class Key, class Value >
+    struct Node
+    {
+      Node(const Key & key, const Value & value);
+      Node(const Key & key, Value && value);
 
-    std::pair< Key, Value > data_;
-    Node * right_;
-    Node * left_;
-    Node * parent_;
-  };
+      std::pair< Key, Value > data_;
+      Node * right_;
+      Node * left_;
+      Node * parent_;
+    };
+  }
 }
 
 template< class Key, class Value >
-kondrat::Node< Key, Value >::Node(const Key & key, const Value & value):
-  data_(std::pair< Key, Value >(key, value)),
+kondrat::detail::Node< Key, Value >::Node(const Key & key, const Value & value):
+  data_(key, value),
+  right_(nullptr),
+  left_(nullptr),
+  parent_(nullptr)
+{}
+
+template< class Key, class Value >
+kondrat::detail::Node< Key, Value >::Node(const Key & key, Value && value):
+  data_(key, std::move(value)),
   right_(nullptr),
   left_(nullptr),
   parent_(nullptr)

@@ -1,25 +1,19 @@
 #ifndef BSTREE_HPP
 #define BSTREE_HPP
 
-#include <cstddef>
-#include <stdexcept>
 #include <algorithm>
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <stdexcept>
+#include <utility>
 #include "bst-node.hpp"
 #include "bst-iter.hpp"
 #include "cbst-iter.hpp"
 
 namespace kondrat
 {
-  template< class T >
-  struct Less
-  {
-    bool operator()(const T & lhs, const T & rhs) const
-    {
-      return lhs < rhs;
-    }
-  };
-
-  template< class Key, class Value, class Compare = Less< Key > >
+  template< class Key, class Value, class Compare = std::less< Key > >
   class BSTree
   {
   public:
@@ -29,17 +23,25 @@ namespace kondrat
     BSTree();
     BSTree(const BSTree & other);
     BSTree(BSTree && other) noexcept;
-    BSTree & operator=(const BSTree & other);
-    BSTree & operator=(BSTree && other) noexcept;
     ~BSTree();
 
+    BSTree & operator=(const BSTree & other);
+    BSTree & operator=(BSTree && other) noexcept;
+
     void push(const Key & key, const Value & value);
-    Value & get(const Key & key);
-    const Value & get(const Key & key) const;
-    bool has(const Key & key) const;
-    Value drop(const Key & key);
+    void push(const Key & key, Value && value);
+    size_t erase(const Key & key);
+    void clear() noexcept;
+    void swap(BSTree & other) noexcept;
+
+    Value & at(const Key & key);
+    const Value & at(const Key & key) const;
+    Value & operator[](const Key & key);
+    bool contains(const Key & key) const;
     size_t height() const;
     size_t height(const_iterator it) const;
+    size_t size() const noexcept;
+    bool empty() const noexcept;
 
     iterator begin();
     iterator end();
@@ -51,20 +53,21 @@ namespace kondrat
     const_iterator rotateLargeLeft(const_iterator it);
     const_iterator rotateLargeRight(const_iterator it);
 
-    size_t size() const noexcept;
-    bool empty() const noexcept;
-
-    void clear() noexcept;
   private:
-    Node< Key, Value > * findNode(const Key & key) const;
-    Node< Key, Value > * getMin(Node< Key, Value > * node) const;
-    Node< Key, Value > * getMax(Node< Key, Value > * node) const;
-    void transplant(Node< Key, Value > * oldNode, Node< Key, Value > * newNode);
-    size_t getHeight(Node< Key, Value > * node) const;
-    Node< Key, Value > * clone(Node< Key, Value > * other, Node< Key, Value > * parent);
-    void clear(Node< Key, Value > * node);
+    using node_t = detail::Node< Key, Value >;
 
-    Node< Key, Value > * root_;
+    node_t * findNode(const Key & key) const;
+    node_t * getMin(node_t * node) const noexcept;
+    node_t * getMax(node_t * node) const noexcept;
+    void transplant(node_t * oldNode, node_t * newNode) noexcept;
+    size_t getHeight(node_t * node) const;
+    node_t * clone(const node_t * other, node_t * parent);
+    void clear(node_t * node) noexcept;
+
+    template< class V >
+    void pushImpl(const Key & key, V && value);
+
+    node_t * root_;
     size_t size_;
     Compare comp_;
   };
@@ -87,48 +90,10 @@ namespace kondrat
 
   template< class Key, class Value, class Compare >
   BSTree< Key, Value, Compare >::BSTree(BSTree && other) noexcept:
-    root_(other.root_),
-    size_(other.size_),
-    comp_(other.comp_)
-  {
-    other.size_ = 0;
-    other.root_ = nullptr;
-  }
-
-  template< class Key, class Value, class Compare >
-  BSTree< Key, Value, Compare > & BSTree< Key, Value, Compare >::operator=(const BSTree & other)
-  {
-    if (this != std::addressof(other))
-    {
-      clear();
-
-      root_ = clone(other.root_, nullptr);
-      size_ = other.size_;
-      comp_ = other.comp_;
-    }
-
-    return *this;
-  }
-
-  template< class Key, class Value, class Compare >
-  BSTree< Key, Value, Compare > & BSTree< Key, Value, Compare >::operator=(BSTree && other) noexcept
-  {
-    if (this == std::addressof(other))
-    {
-      return *this;
-    }
-
-    clear();
-
-    root_ = other.root_;
-    size_ = other.size_;
-    comp_ = other.comp_;
-
-    other.root_ = nullptr;
-    other.size_ = 0;
-
-    return *this;
-  }
+    root_(std::exchange(other.root_, nullptr)),
+    size_(std::exchange(other.size_, 0)),
+    comp_(std::move(other.comp_))
+  {}
 
   template< class Key, class Value, class Compare >
   BSTree< Key, Value, Compare >::~BSTree()
@@ -137,92 +102,50 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
+  BSTree< Key, Value, Compare > & BSTree< Key, Value, Compare >::operator=(const BSTree & other)
+  {
+    if (this != std::addressof(other))
+    {
+      BSTree temp(other);
+      swap(temp);
+    }
+
+    return *this;
+  }
+
+  template< class Key, class Value, class Compare >
+  BSTree< Key, Value, Compare > & BSTree< Key, Value, Compare >::operator=(BSTree && other) noexcept
+  {
+    if (this != std::addressof(other))
+    {
+      BSTree temp(std::move(other));
+      swap(temp);
+    }
+
+    return *this;
+  }
+
+  template< class Key, class Value, class Compare >
   void BSTree< Key, Value, Compare >::push(const Key & key, const Value & value)
   {
-    Node< Key, Value > * parent = nullptr;
-    Node< Key, Value > * current = root_;
-
-    while (current != nullptr)
-    {
-      parent = current;
-
-      if (comp_(key, current->data_.first))
-      {
-        current = current->left_;
-      }
-      else if (comp_(current->data_.first, key))
-      {
-        current = current->right_;
-      }
-      else
-      {
-        current->data_.second = value;
-        return;
-      }
-    }
-
-    Node< Key, Value > * node = new Node< Key, Value >(key, value);
-    node->parent_ = parent;
-
-    if (parent == nullptr)
-    {
-      root_ = node;
-    }
-    else if (comp_(key, parent->data_.first))
-    {
-      parent->left_ = node;
-    }
-    else
-    {
-      parent->right_ = node;
-    }
-
-    ++size_;
+    pushImpl(key, value);
   }
 
   template< class Key, class Value, class Compare >
-  Value & BSTree< Key, Value, Compare >::get(const Key & key)
+  void BSTree< Key, Value, Compare >::push(const Key & key, Value && value)
   {
-    Node< Key, Value > * node = findNode(key);
+    pushImpl(key, std::move(value));
+  }
+
+  template< class Key, class Value, class Compare >
+  size_t BSTree< Key, Value, Compare >::erase(const Key & key)
+  {
+    node_t * node = findNode(key);
 
     if (node == nullptr)
     {
-      throw std::logic_error("key not found");
+      return 0;
     }
-
-    return node->data_.second;
-  }
-
-  template< class Key, class Value, class Compare >
-  const Value & BSTree< Key, Value, Compare >::get(const Key & key) const
-  {
-    Node< Key, Value > * node = findNode(key);
-
-    if (node == nullptr)
-    {
-      throw std::logic_error("key not found");
-    }
-
-    return node->data_.second;
-  }
-
-  template< class Key, class Value, class Compare >
-  bool BSTree< Key, Value, Compare >::has(const Key & key) const
-  {
-    return findNode(key) != nullptr;
-  }
-
-  template< class Key, class Value, class Compare >
-  Value BSTree< Key, Value, Compare >::drop(const Key & key)
-  {
-    Node< Key, Value > * node = findNode(key);
-
-    if (node == nullptr)
-    {
-      throw std::logic_error("key not found");
-    }
-
-    Value value = node->data_.second;
 
     if (node->left_ == nullptr)
     {
@@ -234,7 +157,7 @@ namespace kondrat
     }
     else
     {
-      Node< Key, Value > * next = getMin(node->right_);
+      node_t * next = getMin(node->right_);
 
       if (next->parent_ != node)
       {
@@ -251,7 +174,69 @@ namespace kondrat
     delete node;
     --size_;
 
-    return value;
+    return 1;
+  }
+
+  template< class Key, class Value, class Compare >
+  void BSTree< Key, Value, Compare >::clear() noexcept
+  {
+    clear(root_);
+    root_ = nullptr;
+    size_ = 0;
+  }
+
+  template< class Key, class Value, class Compare >
+  void BSTree< Key, Value, Compare >::swap(BSTree & other) noexcept
+  {
+    std::swap(root_, other.root_);
+    std::swap(size_, other.size_);
+    std::swap(comp_, other.comp_);
+  }
+
+  template< class Key, class Value, class Compare >
+  Value & BSTree< Key, Value, Compare >::at(const Key & key)
+  {
+    node_t * node = findNode(key);
+
+    if (node == nullptr)
+    {
+      throw std::logic_error("key not found");
+    }
+
+    return node->data_.second;
+  }
+
+  template< class Key, class Value, class Compare >
+  const Value & BSTree< Key, Value, Compare >::at(const Key & key) const
+  {
+    node_t * node = findNode(key);
+
+    if (node == nullptr)
+    {
+      throw std::logic_error("key not found");
+    }
+
+    return node->data_.second;
+  }
+
+  template< class Key, class Value, class Compare >
+  Value & BSTree< Key, Value, Compare >::operator[](const Key & key)
+  {
+    node_t * node = findNode(key);
+
+    if (node == nullptr)
+    {
+      push(key, Value{});
+      node = findNode(key);
+    }
+
+    return node->data_.second;
+  }
+
+  template< class Key, class Value, class Compare >
+  bool BSTree< Key, Value, Compare >::contains(const Key & key) const
+  {
+    return findNode(key) != nullptr;
   }
 
   template< class Key, class Value, class Compare >
@@ -264,6 +249,18 @@ namespace kondrat
   size_t BSTree< Key, Value, Compare >::height(const_iterator it) const
   {
     return getHeight(it.node_);
+  }
+
+  template< class Key, class Value, class Compare >
+  size_t BSTree< Key, Value, Compare >::size() const noexcept
+  {
+    return size_;
+  }
+
+  template< class Key, class Value, class Compare >
+  bool BSTree< Key, Value, Compare >::empty() const noexcept
+  {
+    return size_ == 0;
   }
 
   template< class Key, class Value, class Compare >
@@ -303,14 +300,14 @@ namespace kondrat
   template< class Key, class Value, class Compare >
   typename BSTree< Key, Value, Compare >::const_iterator BSTree< Key, Value, Compare >::rotateLeft(const_iterator it)
   {
-    Node< Key, Value > * x = it.node_;
+    node_t * x = it.node_;
 
     if (x == nullptr || x->right_ == nullptr)
     {
       throw std::logic_error("invalid rotation");
     }
 
-    Node< Key, Value > * y = x->right_;
+    node_t * y = x->right_;
 
     x->right_ = y->left_;
 
@@ -343,14 +340,14 @@ namespace kondrat
   template< class Key, class Value, class Compare >
   typename BSTree< Key, Value, Compare >::const_iterator BSTree< Key, Value, Compare >::rotateRight(const_iterator it)
   {
-    Node< Key, Value > * x = it.node_;
+    node_t * x = it.node_;
 
     if (x == nullptr || x->left_ == nullptr)
     {
       throw std::logic_error("invalid rotation");
     }
 
-    Node< Key, Value > * y = x->left_;
+    node_t * y = x->left_;
 
     x->left_ = y->right_;
 
@@ -381,9 +378,10 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  typename BSTree< Key, Value, Compare >::const_iterator BSTree< Key, Value, Compare >::rotateLargeLeft(const_iterator it)
+  typename BSTree< Key, Value, Compare >::const_iterator
+  BSTree< Key, Value, Compare >::rotateLargeLeft(const_iterator it)
   {
-    Node< Key, Value > * x = it.node_;
+    node_t * x = it.node_;
 
     if (x == nullptr || x->right_ == nullptr)
     {
@@ -395,9 +393,10 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  typename BSTree< Key, Value, Compare >::const_iterator BSTree< Key, Value, Compare >::rotateLargeRight(const_iterator it)
+  typename BSTree< Key, Value, Compare >::const_iterator
+  BSTree< Key, Value, Compare >::rotateLargeRight(const_iterator it)
   {
-    Node< Key, Value > * x = it.node_;
+    node_t * x = it.node_;
 
     if (x == nullptr || x->left_ == nullptr)
     {
@@ -409,29 +408,9 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  size_t BSTree< Key, Value, Compare >::size() const noexcept
+  typename BSTree< Key, Value, Compare >::node_t * BSTree< Key, Value, Compare >::findNode(const Key & key) const
   {
-    return size_;
-  }
-
-  template< class Key, class Value, class Compare >
-  bool BSTree< Key, Value, Compare >::empty() const noexcept
-  {
-    return size_ == 0;
-  }
-
-  template< class Key, class Value, class Compare >
-  void BSTree< Key, Value, Compare >::clear() noexcept
-  {
-    clear(root_);
-    root_ = nullptr;
-    size_ = 0;
-  }
-
-  template< class Key, class Value, class Compare >
-  Node< Key, Value > * BSTree< Key, Value, Compare >::findNode(const Key & key) const
-  {
-    Node< Key, Value > * current = root_;
+    node_t * current = root_;
 
     while (current != nullptr)
     {
@@ -453,7 +432,8 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  Node< Key, Value > * BSTree< Key, Value, Compare >::getMin(Node< Key, Value > * node) const
+  typename BSTree< Key, Value, Compare >::node_t *
+  BSTree< Key, Value, Compare >::getMin(node_t * node) const noexcept
   {
     if (node == nullptr)
     {
@@ -469,7 +449,8 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  Node< Key, Value > * BSTree< Key, Value, Compare >::getMax(Node< Key, Value > * node) const
+  typename BSTree< Key, Value, Compare >::node_t *
+  BSTree< Key, Value, Compare >::getMax(node_t * node) const noexcept
   {
     if (node == nullptr)
     {
@@ -485,7 +466,7 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  void BSTree< Key, Value, Compare >::transplant(Node< Key, Value > * oldNode, Node< Key, Value > * newNode)
+  void BSTree< Key, Value, Compare >::transplant(node_t * oldNode, node_t * newNode) noexcept
   {
     if (oldNode->parent_ == nullptr)
     {
@@ -507,7 +488,7 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  size_t BSTree< Key, Value, Compare >::getHeight(Node< Key, Value > * node) const
+  size_t BSTree< Key, Value, Compare >::getHeight(node_t * node) const
   {
     if (node == nullptr)
     {
@@ -521,25 +502,33 @@ namespace kondrat
   }
 
   template< class Key, class Value, class Compare >
-  kondrat::Node< Key, Value > * kondrat::BSTree< Key, Value, Compare >::clone(Node< Key, Value > * other, Node< Key, Value > * parent)
+  typename BSTree< Key, Value, Compare >::node_t *
+  BSTree< Key, Value, Compare >::clone(const node_t * other, node_t * parent)
   {
     if (other == nullptr)
     {
       return nullptr;
     }
 
-    Node< Key, Value > * node = new Node< Key, Value >(other->data_.first, other->data_.second);
-
+    node_t * node = new node_t(other->data_.first, other->data_.second);
     node->parent_ = parent;
 
-    node->left_ = clone(other->left_, node);
-    node->right_ = clone(other->right_, node);
+    try
+    {
+      node->left_ = clone(other->left_, node);
+      node->right_ = clone(other->right_, node);
+    }
+    catch (...)
+    {
+      clear(node);
+      throw;
+    }
 
     return node;
   }
 
   template< class Key, class Value, class Compare >
-  void kondrat::BSTree< Key, Value, Compare >::clear(Node< Key, Value > * node)
+  void BSTree< Key, Value, Compare >::clear(node_t * node) noexcept
   {
     if (node == nullptr)
     {
@@ -550,6 +539,51 @@ namespace kondrat
     clear(node->right_);
 
     delete node;
+  }
+
+  template< class Key, class Value, class Compare >
+  template< class V >
+  void BSTree< Key, Value, Compare >::pushImpl(const Key & key, V && value)
+  {
+    node_t * parent = nullptr;
+    node_t * current = root_;
+
+    while (current != nullptr)
+    {
+      parent = current;
+
+      if (comp_(key, current->data_.first))
+      {
+        current = current->left_;
+      }
+      else if (comp_(current->data_.first, key))
+      {
+        current = current->right_;
+      }
+      else
+      {
+        current->data_.second = std::forward< V >(value);
+        return;
+      }
+    }
+
+    std::unique_ptr< node_t > node(new node_t(key, std::forward< V >(value)));
+    node->parent_ = parent;
+
+    if (parent == nullptr)
+    {
+      root_ = node.release();
+    }
+    else if (comp_(key, parent->data_.first))
+    {
+      parent->left_ = node.release();
+    }
+    else
+    {
+      parent->right_ = node.release();
+    }
+
+    ++size_;
   }
 }
 

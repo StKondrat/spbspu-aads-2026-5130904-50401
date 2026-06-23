@@ -2,37 +2,11 @@
 
 #include <istream>
 #include <ostream>
-#include <sstream>
 #include <stdexcept>
 
-namespace kondrat
+namespace
 {
-  void print(std::istream & in, std::ostream & out, Collection & datasets)
-  {
-    std::string name;
-
-    if (!(in >> name))
-    {
-      throw std::logic_error("invalid command");
-    }
-
-    Dictionary & dict = datasets.get(name);
-
-    if (dict.empty())
-    {
-      out << "<EMPTY>\n";
-      return;
-    }
-
-    out << name;
-
-    for (Dictionary::iterator it = dict.begin(); it != dict.end(); ++it)
-    {
-      out << ' ' << it->first << ' ' << it->second;
-    }
-
-    out << '\n';
-  }
+  using Dictionary = kondrat::Dictionary;
 
   Dictionary makeComplement(const Dictionary & lhs, const Dictionary & rhs)
   {
@@ -40,7 +14,7 @@ namespace kondrat
 
     for (Dictionary::const_iterator it = lhs.begin(); it != lhs.end(); ++it)
     {
-      if (!rhs.has(it->first))
+      if (!rhs.contains(it->first))
       {
         result.push(it->first, it->second);
       }
@@ -55,7 +29,7 @@ namespace kondrat
 
     for (Dictionary::const_iterator it = lhs.begin(); it != lhs.end(); ++it)
     {
-      if (rhs.has(it->first))
+      if (rhs.contains(it->first))
       {
         result.push(it->first, it->second);
       }
@@ -75,7 +49,7 @@ namespace kondrat
 
     for (Dictionary::const_iterator it = rhs.begin(); it != rhs.end(); ++it)
     {
-      if (!result.has(it->first))
+      if (!result.contains(it->first))
       {
         result.push(it->first, it->second);
       }
@@ -83,49 +57,76 @@ namespace kondrat
 
     return result;
   }
+}
 
-  void complement(std::istream & in, std::ostream &, Collection & datasets)
+void kondrat::print(std::istream & in, std::ostream & out, Collection & datasets)
+{
+  std::string name;
+
+  if (!(in >> name))
   {
-    std::string newName;
-    std::string lhsName;
-    std::string rhsName;
-
-    if (!(in >> newName >> lhsName >> rhsName))
-    {
-      throw std::logic_error("invalid command");
-    }
-
-    Dictionary result = makeComplement(datasets.get(lhsName), datasets.get(rhsName));
-    datasets.push(newName, result);
+    throw std::logic_error("invalid command");
   }
 
-  void intersect(std::istream & in, std::ostream &, Collection & datasets)
+  const Dictionary & dict = datasets.at(name);
+
+  if (dict.empty())
   {
-    std::string newName;
-    std::string lhsName;
-    std::string rhsName;
-
-    if (!(in >> newName >> lhsName >> rhsName))
-    {
-      throw std::logic_error("invalid command");
-    }
-
-    Dictionary result = makeIntersect(datasets.get(lhsName), datasets.get(rhsName));
-    datasets.push(newName, result);
+    out << "<EMPTY>\n";
+    return;
   }
 
-  void unionCollections(std::istream & in, std::ostream &, Collection & datasets)
+  out << name;
+
+  for (Dictionary::const_iterator it = dict.begin(); it != dict.end(); ++it)
   {
-    std::string newName;
-    std::string lhsName;
-    std::string rhsName;
-
-    if (!(in >> newName >> lhsName >> rhsName))
-    {
-      throw std::logic_error("invalid command");
-    }
-
-    Dictionary result = makeUnion(datasets.get(lhsName), datasets.get(rhsName));
-    datasets.push(newName, result);
+    out << ' ' << it->first << ' ' << it->second;
   }
+
+  out << '\n';
+}
+
+void kondrat::complement(std::istream & in, std::ostream &, Collection & datasets)
+{
+  std::string newName;
+  std::string lhsName;
+  std::string rhsName;
+
+  if (!(in >> newName >> lhsName >> rhsName))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  Dictionary result = makeComplement(datasets.at(lhsName), datasets.at(rhsName));
+  datasets.push(newName, result);
+}
+
+void kondrat::intersect(std::istream & in, std::ostream &, Collection & datasets)
+{
+  std::string newName;
+  std::string lhsName;
+  std::string rhsName;
+
+  if (!(in >> newName >> lhsName >> rhsName))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  Dictionary result = makeIntersect(datasets.at(lhsName), datasets.at(rhsName));
+  datasets.push(newName, result);
+}
+
+void kondrat::unionCollections(std::istream & in, std::ostream &, Collection & datasets)
+{
+  std::string newName;
+  std::string lhsName;
+  std::string rhsName;
+
+  if (!(in >> newName >> lhsName >> rhsName))
+  {
+    throw std::logic_error("invalid command");
+  }
+
+  Dictionary result = makeUnion(datasets.at(lhsName), datasets.at(rhsName));
+  datasets.push(newName, result);
 }
